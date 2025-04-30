@@ -16,8 +16,31 @@ public class StateInstance {
   public List<TaskInstance> tasks = new ArrayList<>();
   public Set<Actor> actors = new HashSet<>();
 
+  public StateInstance(String name) {
+    this.name=name;
+  }
+
   public boolean isDelayed() {
     return actual.getEnd().isAfter(scheduled.getEnd());
   }
 
+  public void setScheduled(TimeInterval scheduled) {
+    this.scheduled = scheduled;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public TimeInterval getScheduled() {
+    return scheduled;
+  }
+
+  public List<TaskInstance> getTasks() {
+    return tasks;
+  }
+
+  public void addTask(TaskInstance task) {
+    this.tasks.add(task);
+  }
 }

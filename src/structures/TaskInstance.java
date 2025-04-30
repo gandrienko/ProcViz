@@ -18,9 +18,4 @@ public class TaskInstance {
   public boolean isFork;
   public boolean isConfluence;
   public List<Anomaly> anomalies;
-
-  public TaskInstance(String id, String name) {
-    this.id = id;
-    this.name = name;
-  }
 }

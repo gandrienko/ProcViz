@@ -6,9 +6,13 @@ package structures;
 
 public class Actor {
   public String id;
-  public ActorRole role;
+  public String role;
 
   public Actor(String id) {
     this.id = id;
+  }
+
+  public String getRole() {
+    return role;
   }
 }

@@ -18,6 +18,23 @@ public class ProcessInstance {
     this.id = id;
   }
 
+  public List<StateInstance> getStates() {
+    return states;
+  }
+
+  public void addState(StateInstance state) {
+    this.states.add(state);
+  }
+
+  public StateInstance getState(String stateName) {
+    for (StateInstance s : states) {
+      if (s.getName().equals(stateName)) {
+        return s;
+      }
+    }
+    return null;
+  }
+
   public void addTask(TaskInstance task) {
     tasks.add(task);
   }
