@@ -1,0 +1,11 @@
+package structures;
+
+public enum ProcessType {
+  SUBMISSION,
+  PC_MEMBER,
+  CHAIR,
+  REVIEWER,
+  RESPONSE_UNIT,
+  COORDINATOR,
+  INFRASTRUCTURE_OPERATOR
+}
