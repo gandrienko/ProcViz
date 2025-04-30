@@ -1,5 +1,6 @@
 package structures;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -7,14 +8,19 @@ import java.util.List;
  */
 
 public class TaskInstance {
-  String id;
-  String name;
-  List<Actor> actorsInvolved;
-  TaskStatus status;
-  TimeInterval scheduled;
-  TimeInterval actual;
-  boolean isParallel;
-  boolean isFork;
-  boolean isConfluence;
-  List<Anomaly> anomalies;
+  public String id;
+  public String name;
+  public List<Actor> actorsInvolved = new ArrayList<>();;
+  public TaskStatus status;
+  public TimeInterval scheduled;
+  public TimeInterval actual;
+  public boolean isParallel;
+  public boolean isFork;
+  public boolean isConfluence;
+  public List<Anomaly> anomalies;
+
+  public TaskInstance(String id, String name) {
+    this.id = id;
+    this.name = name;
+  }
 }

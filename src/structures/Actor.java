@@ -5,6 +5,10 @@ package structures;
  */
 
 public class Actor {
-  String id;
-  ActorRole role;
+  public String id;
+  public ActorRole role;
+
+  public Actor(String id) {
+    this.id = id;
+  }
 }

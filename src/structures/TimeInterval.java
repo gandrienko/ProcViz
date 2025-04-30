@@ -7,10 +7,15 @@ import java.time.*;
  */
 
 public class TimeInterval {
-  LocalDateTime start;
-  LocalDateTime end;
+  public LocalDateTime start;
+  public LocalDateTime end;
 
-  Duration getDuration() {
+  public TimeInterval(LocalDateTime start, LocalDateTime end) {
+    this.start = start;
+    this.end = end;
+  }
+
+  public Duration getDuration() {
     return Duration.between(start, end);
   }
 

@@ -7,7 +7,7 @@ import java.time.Duration;
  */
 
 public class Anomaly { // test
-  AnomalyType type;
-  String description;
-  Duration severity; // Optional
+  public AnomalyType type;
+  public String description;
+  public Duration severity; // Optional
 }
