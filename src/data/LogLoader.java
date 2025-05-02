@@ -13,6 +13,7 @@ import java.util.*;
 
 public class LogLoader {
   private Map<String, ProcessInstance> processes = new HashMap<>();
+
   private Map<String, Actor> actors = new HashMap<>();
   private Set<String> actionTypes = new HashSet<>();
   private Map<String, String> actionToPhaseMap = new HashMap<>();
@@ -145,13 +146,7 @@ public class LogLoader {
     return actorRoles;
   }
 
-  public Set<Actor> getActorsByRole(String role) {
-    Set<Actor> result = new HashSet<>();
-    for (Actor actor : actors.values()) {
-      if (role.equals(actor.getRole())) {
-        result.add(actor);
-      }
-    }
-    return result;
+  public Map<String, Actor> getActors() {
+    return actors;
   }
 }
