@@ -21,18 +21,21 @@ public class LogLoader {
   private Set<String> actorRoles = new HashSet<>();
   private Map<String, Phase> phases = new LinkedHashMap<>();
 
-  private DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneOffset.UTC);
+  private DateTimeFormatter dateFormatter= DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC),
+      dateTimeFormatter= DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneOffset.UTC);
 
-  public void loadPhaseTimetable(String phaseFilePath) throws IOException {
+  public void loadPhaseTimetable(String phaseFilePath) {
     try (BufferedReader br = new BufferedReader(new FileReader(phaseFilePath))) {
       String line = br.readLine(); // skip header
       while ((line = br.readLine()) != null) {
         String[] tokens = line.split(",");
         String name = tokens[0].trim();
-        LocalDate start = LocalDate.parse(tokens[1].trim());
-        LocalDate end = LocalDate.parse(tokens[2].trim());
+        LocalDate start = LocalDate.parse(tokens[1].trim(), dateFormatter);
+        LocalDate end = LocalDate.parse(tokens[2].trim(), dateFormatter);
         phases.put(name, new Phase(name, start, end));
       }
+    } catch (IOException ex) {
+      System.out.println("Exception reading the list of phases: \n"+ex);
     }
   }
 
@@ -74,7 +77,7 @@ public class LogLoader {
         if (tokens.length < 4) continue;
 
         String submissionId = tokens[0].trim();
-        LocalDateTime timestamp = LocalDateTime.parse(tokens[1].trim().replace(" ", "T"));
+        LocalDateTime timestamp = LocalDateTime.parse(tokens[1].trim(), dateTimeFormatter);
         String actorId = tokens[2].trim();
         String action = tokens[3].trim();
 
