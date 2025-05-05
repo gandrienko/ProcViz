@@ -43,4 +43,13 @@ public class StateInstance {
   public void addTask(TaskInstance task) {
     this.tasks.add(task);
   }
+  
+  public void addActor(Actor actor) {
+    if (actor==null || actor.id==null)
+      return;
+    for (Actor a:actors)
+      if (a.id.equals(actor.id))
+        return; //already there
+    actors.add(actor);
+  }
 }

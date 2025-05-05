@@ -8,6 +8,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -33,13 +34,31 @@ public class TimelinePanel extends JPanel {
   };
 
   public List<Phase> phases=null;
-  private Map<Rectangle, Phase> phaseAreas = null;
-  private JToolTip toolTip=null;
+  protected LocalDateTime minDate=null, maxDate=null;
+  protected long totalDuration=0l;
+  
+  protected int fontHeight=0, yTop=0, yBottom=0, sectionHeight=0;
+  
+  protected Map<Rectangle, Phase> phaseAreas = null;
+  protected Map<String,Color> phaseColors=null;
+  protected JToolTip toolTip=null;
 
   public TimelinePanel(List<Phase> phases) {
     this.phases = phases;
+  
+    minDate = phases.get(0).startDate.atStartOfDay();
+    maxDate = phases.get(phases.size() - 1).endDate.atTime(23,59,59);
+    totalDuration=ChronoUnit.SECONDS.between(minDate,maxDate);
+    
+    phaseColors=new HashMap<String,Color>(phases.size());
+    for (int i = 0; i < phases.size(); i++) {
+      Phase p = phases.get(i);
+      phaseColors.put(p.name,pastelColors[i % pastelColors.length]);
+    }
+    
     setPreferredSize(new Dimension(1000, 200));
     setBackground(Color.WHITE);
+
     this.toolTip = new JToolTip();
     setToolTipText(""); // Enables tooltip mechanism
     addMouseMotionListener(new MouseMotionAdapter() {
@@ -48,7 +67,7 @@ public class TimelinePanel extends JPanel {
           for (Map.Entry<Rectangle, Phase> entry : phaseAreas.entrySet()) {
             if (entry.getKey().contains(e.getPoint())) {
               Phase phase = entry.getValue();
-              long duration = ChronoUnit.DAYS.between(phase.startDate, phase.endDate);
+              long duration = ChronoUnit.DAYS.between(phase.startDate, phase.endDate)+1;
               String text = String.format("<html><b>%s</b><br>Start: %s<br>End: %s<br>Duration: %d days</html>",
                   phase.name,
                   phase.startDate.format(formatter),
@@ -72,13 +91,9 @@ public class TimelinePanel extends JPanel {
     int width = getWidth();
     int height = getHeight();
 
-    LocalDate minDate = phases.get(0).startDate;
-    LocalDate maxDate = phases.get(phases.size() - 1).endDate;
-    long totalDays = ChronoUnit.DAYS.between(minDate, maxDate);;
-
-    int fontHeight=g2d.getFontMetrics().getHeight();
-    int yTop = 5, yBottom=height - fontHeight-5;
-    int sectionHeight = yBottom-yTop;
+    fontHeight=g2d.getFontMetrics().getHeight();
+    yTop = 5; yBottom=height - fontHeight-5;
+    sectionHeight = yBottom-yTop;
     
     if (phaseAreas==null)
       phaseAreas=new HashMap<Rectangle,Phase>(phases.size());
@@ -87,37 +102,38 @@ public class TimelinePanel extends JPanel {
 
     for (int i = 0; i < phases.size(); i++) {
       Phase p = phases.get(i);
-      long daysFromStart1 = ChronoUnit.DAYS.between(minDate,p.startDate);
-      long daysFromStart2 = ChronoUnit.DAYS.between(minDate,p.endDate);
+      LocalDateTime t1=p.startDate.atStartOfDay(),
+          t2=p.endDate.atTime(23,59,59);
+      long secondsFromStart = ChronoUnit.SECONDS.between(minDate,t1);
+      long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,t2);
 
-      int x1 = (int) ((daysFromStart1 * width) / (double) totalDays);
-      int x2 = (int) ((daysFromStart2 * width) / (double) totalDays);
+      int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
+      int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
   
       g2d.setColor(Color.white);
       g2d.fillRect(x1, yTop, width-x1+1, sectionHeight);
       
-      g2d.setColor(pastelColors[i % pastelColors.length]);
+      g2d.setColor(phaseColors.get(p.name));
       g2d.fillRect(x1, yTop, x2-x1+1, sectionHeight);
 
-      g2d.setColor(Color.BLACK);
+      g2d.setColor(Color.lightGray);
       g2d.drawRect(x1, yTop, x2-x1, sectionHeight);
       Rectangle r=new Rectangle(x1,yTop,x2-x1,sectionHeight);
       phaseAreas.put(r,p);
+      g2d.setColor(Color.BLACK);
       g2d.drawString(p.name, x1 + 5, yTop + fontHeight);
+  
+      g2d.setColor(Color.white);
+      g2d.fillRect(x1-5,yBottom + 1,width-x1+5,fontHeight);
+      g2d.setColor(Color.BLACK);
+      g2d.drawLine(x1, yBottom, x1, yBottom + 5);
+      g2d.drawString(p.startDate.format(formatter), x1 + 2, yBottom+fontHeight);
     }
 
     // Draw timeline axis
-    g2d.setColor(Color.BLACK);
+    g2d.setColor(Color.gray);
     g2d.drawLine(0, yTop + sectionHeight, width, yTop + sectionHeight);
 
-    for (Phase p : phases) {
-      int x = (int) ((ChronoUnit.DAYS.between(minDate,p.startDate) * width) / (double) totalDays);
-      g2d.setColor(Color.white);
-      g2d.fillRect(x-5,yBottom + 1,width-x+5,fontHeight);
-      g2d.setColor(Color.BLACK);
-      g2d.drawLine(x, yBottom, x, yBottom + 5);
-      g2d.drawString(p.startDate.format(formatter), x + 2, yBottom+fontHeight);
-    }
     String endStr=maxDate.format(formatter);
     int x=width-g2d.getFontMetrics().stringWidth(endStr)-3;
     g2d.setColor(Color.white);

@@ -14,8 +14,4 @@ public class TaskInstance {
   public TaskStatus status;
   public TimeInterval scheduled;
   public TimeInterval actual;
-  public boolean isParallel;
-  public boolean isFork;
-  public boolean isConfluence;
-  public List<Anomaly> anomalies;
 }

@@ -1,6 +1,7 @@
 import data.LogLoader;
 import structures.Actor;
 import structures.GlobalProcess;
+import viz.ProcessTimelinePanel;
 import viz.TimelinePanel;
 
 import javax.swing.*;
@@ -51,7 +52,7 @@ public class Main {
         for (Map.Entry<String, String> entry : gProc.actionToActorMap.entrySet()) {
           System.out.println(entry.getKey() + " => " + entry.getValue());
         }
-
+        /*
         if (loader.getActorRoles()!=null && !loader.getActorRoles().isEmpty()) {
           System.out.println("Loaded roles of actors:");
           for (String role : gProc.actorRoles) {
@@ -61,6 +62,7 @@ public class Main {
               System.out.println(actor.id);
           }
         }
+        */
 
         gProc.processes =loader.getProcesses();
 
@@ -70,18 +72,21 @@ public class Main {
         System.err.println("Error reading the log file: " + e.getMessage());
       }
       if (gProc.phases!=null && !gProc.phases.isEmpty()) {
-        TimelinePanel panel = new TimelinePanel(gProc.getListOfPhases());
+        ProcessTimelinePanel panel = new ProcessTimelinePanel(gProc);
 
-        JFrame frame = new JFrame("GProc Timeline");
+        JFrame frame = new JFrame("Process Timeline");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
-        frame.add(panel, BorderLayout.CENTER);
+        JScrollPane scrollPane = new JScrollPane(panel);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(20);
+        frame.add(scrollPane, BorderLayout.CENTER);
 
         JPanel controlPanel = new JPanel();
         controlPanel.add(new JLabel("Interaction controls coming soon..."));
         frame.add(controlPanel, BorderLayout.SOUTH);
 
         frame.pack();
+        frame.setSize(frame.getWidth(), 1000);
         frame.setVisible(true);
       }
     }

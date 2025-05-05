@@ -84,6 +84,7 @@ public class LogLoader {
         actionTypes.add(action);
 
         ProcessInstance process = processes.computeIfAbsent(submissionId, ProcessInstance::new);
+        process.type="SUBMISSION";
         Actor actor = actors.get(actorId);
         if (actor==null) {
           actor=new Actor(actorId);
@@ -95,6 +96,7 @@ public class LogLoader {
           if (actor.role!=null && !actorRoles.contains(actor.role))
             actorRoles.add(actor.role);
         }
+        process.addActor(actor);
 
         // Determine which phase this action belongs to
         String phaseName = actionToPhaseMap.get(action);
@@ -107,9 +109,11 @@ public class LogLoader {
         StateInstance state = process.getState(phaseName);
         if (state == null) {
           state = new StateInstance(phaseName);
-          state.setScheduled(new TimeInterval(phase.startDate.atStartOfDay(), phase.endDate.atTime(23, 59)));
+          state.setScheduled(new TimeInterval(phase.startDate.atStartOfDay(),
+              phase.endDate.atTime(23, 59,59)));
           process.addState(state);
         }
+        state.addActor(actor);
 
         // Add this action as a TaskInstance (minimal form)
         TaskInstance task = new TaskInstance();

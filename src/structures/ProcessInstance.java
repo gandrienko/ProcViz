@@ -8,10 +8,8 @@ import java.util.*;
 
 public class ProcessInstance {
   public String id;
-  public ProcessType type; // e.g., SUBMISSION, PC_MEMBER, CHAIR, etc.
+  public String type; // e.g., submission, PC member, chair, etc.
   public List<StateInstance> states = new ArrayList<>();
-  public Map<String, Object> metadata; // optional extensibility
-  public List<TaskInstance> tasks = new ArrayList<>();
   public Set<Actor> actors = new HashSet<>();
 
   public ProcessInstance(String id) {
@@ -35,11 +33,12 @@ public class ProcessInstance {
     return null;
   }
 
-  public void addTask(TaskInstance task) {
-    tasks.add(task);
-  }
-
   public void addActor(Actor actor) {
+    if (actor==null || actor.id==null)
+      return;
+    for (Actor a:actors)
+      if (a.id.equals(actor.id))
+        return; //already there
     actors.add(actor);
   }
 }
