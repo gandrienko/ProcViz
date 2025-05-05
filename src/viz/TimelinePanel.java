@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 public class TimelinePanel extends JPanel {
-  private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+  public final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
   // Pastel colors for phases
   public static Color[] pastelColors = {
       new Color(255, 179, 186), // light pink
@@ -63,23 +63,28 @@ public class TimelinePanel extends JPanel {
     setToolTipText(""); // Enables tooltip mechanism
     addMouseMotionListener(new MouseMotionAdapter() {
       public void mouseMoved(MouseEvent e) {
-        if (phaseAreas!=null)
-          for (Map.Entry<Rectangle, Phase> entry : phaseAreas.entrySet()) {
-            if (entry.getKey().contains(e.getPoint())) {
-              Phase phase = entry.getValue();
-              long duration = ChronoUnit.DAYS.between(phase.startDate, phase.endDate)+1;
-              String text = String.format("<html><b>%s</b><br>Start: %s<br>End: %s<br>Duration: %d days</html>",
-                  phase.name,
-                  phase.startDate.format(formatter),
-                  phase.endDate.format(formatter),
-                  duration);
-              setToolTipText(text);
-              return;
-            }
-          }
-        setToolTipText(null);
+        setToolTipText(getToolTipText(e.getPoint()));
       }
     });
+  }
+  
+  public String getToolTipText(Point pt) {
+    if (pt==null)
+      return null;
+    if (phaseAreas!=null)
+      for (Map.Entry<Rectangle, Phase> entry : phaseAreas.entrySet()) {
+        if (entry.getKey().contains(pt)) {
+          Phase phase = entry.getValue();
+          long duration = ChronoUnit.DAYS.between(phase.startDate, phase.endDate)+1;
+          String text = String.format("<html><b>%s</b><br>Start: %s<br>End: %s<br>Duration: %d days</html>",
+              phase.name,
+              phase.startDate.format(formatter),
+              phase.endDate.format(formatter),
+              duration);
+          return text;
+        }
+      }
+    return null;
   }
 
   @Override

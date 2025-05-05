@@ -14,6 +14,8 @@ public class ProcessTimelinePanel extends TimelinePanel{
   
   public GlobalProcess gProc=null;
   
+  protected Map<Rectangle, ProcessInstance> processAreas = null;
+  
   public ProcessTimelinePanel(GlobalProcess gProc) {
     super(gProc.getListOfPhases());
     this.gProc=gProc;
@@ -27,7 +29,12 @@ public class ProcessTimelinePanel extends TimelinePanel{
     
     Stroke stroke=g2d.getStroke();
     g2d.setStroke(new BasicStroke(2));
-
+  
+    if (processAreas==null)
+      processAreas=new HashMap<Rectangle,ProcessInstance>(gProc.processes.size());
+    else
+      processAreas.clear();
+    
     int y0=yTop+actorLineSpacing+fontHeight;
     for (ProcessInstance p: gProc.processes) {
       ArrayList<Actor> sortedActors = new ArrayList<Actor>(p.actors);
@@ -43,7 +50,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
       for (int i=0; i<lastX.length; i++)
         lastX[i]=-1000;
       
-      int maxY=y0;
+      int maxY=y0, maxX=-1000;
       for (int i=0; i<p.states.size(); i++) {
         StateInstance s=p.states.get(i);
         Color sColor=phaseColors.get(s.name);
@@ -78,15 +85,34 @@ public class ProcessTimelinePanel extends TimelinePanel{
             g.drawLine(lastX[offsetIndex],y,x1,y);
             g.setColor(sColor);
             g2d.drawOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
+            g2d.fillOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
             lastX[offsetIndex]=x2;
+            if (maxX<x2) maxX=x2;
           }
         }
       }
+      Rectangle r=new Rectangle(x0,y0,maxX-x0,maxY-y0);
+      processAreas.put(r,p);
       y0=maxY+actorLineSpacing*3;
     }
     g2d.setStroke(stroke);
     setPreferredSize(new Dimension(width, y0+2*actorLineSpacing));
     setSize(getPreferredSize());
   }
-
+  
+  
+  public String getToolTipText(Point pt) {
+    if (pt==null)
+      return null;
+    if (processAreas!=null)
+      for (Map.Entry<Rectangle, ProcessInstance> entry : processAreas.entrySet()) {
+        if (entry.getKey().contains(pt)) {
+          ProcessInstance p = entry.getValue();
+          String text = String.format("<html><b>%s</b><br>Type: %s</html>",
+              p.id,p.type);
+          return text;
+        }
+      }
+    return super.getToolTipText(pt);
+  }
 }
