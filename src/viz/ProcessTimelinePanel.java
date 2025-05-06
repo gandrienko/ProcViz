@@ -54,6 +54,8 @@ public class ProcessTimelinePanel extends TimelinePanel{
         actorAreas=new HashMap<Rectangle,Actor>(sortedActors.size());
         processActorAreas.put(p.id,actorAreas);
       }
+      else
+        actorAreas.clear();
 
       if (processTaskAreas==null)
         processTaskAreas=new HashMap<String,Map<Rectangle,TaskInstance>>(gProc.processes.size());
@@ -62,6 +64,8 @@ public class ProcessTimelinePanel extends TimelinePanel{
         taskAreas=new HashMap<Rectangle,TaskInstance>(100);
         processTaskAreas.put(p.id,taskAreas);
       }
+      else
+        taskAreas.clear();
 
       int x0=-1000;
       int lastX[]=new int[sortedActors.size()];
@@ -94,17 +98,19 @@ public class ProcessTimelinePanel extends TimelinePanel{
               g.setColor(Color.darkGray);
               g.drawLine(x0,y0+ actorLineSpacing / 2,x1,y0+ actorLineSpacing / 2+(sortedActors.size()-1)*actorLineSpacing);
             }
-            if (lastX[offsetIndex]<0) {
+            if (offsetIndex!=null && lastX[offsetIndex]<0) {
               lastX[offsetIndex]=x0;
               g.setColor(Color.lightGray);
             }
             else
               g.setColor(Color.gray);
-            g.drawLine(lastX[offsetIndex],y,x1,y);
+            if (offsetIndex!=null)
+              g.drawLine(lastX[offsetIndex],y,x1,y);
             g.setColor(sColor);
             g2d.drawOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
             g2d.fillOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
-            lastX[offsetIndex]=x2;
+            if (offsetIndex!=null)
+              lastX[offsetIndex]=x2;
             if (maxX<x2) maxX=x2;
             taskAreas.put(new Rectangle(x1-markRadius,y-markRadius,
                 markDiameter+x2-x1,markDiameter),t);
@@ -114,9 +120,11 @@ public class ProcessTimelinePanel extends TimelinePanel{
       Rectangle r=new Rectangle(x0,y0,maxX-x0,maxY-y0);
       processAreas.put(r,p);
 
-      for (int i=0; i<sortedActors.size(); i++)
-        actorAreas.put(new Rectangle(x0-markRadius,y0-markRadius,lastX[i]-x0+markDiameter,markDiameter),
+      for (int i=0; i<sortedActors.size(); i++) {
+        int y=  y0 + i * actorLineSpacing + actorLineSpacing / 2;
+        actorAreas.put(new Rectangle(x0-markRadius, y-markRadius, lastX[i]-x0+markDiameter, markDiameter),
             sortedActors.get(i));
+      }
 
       y0=maxY+actorLineSpacing*3;
     }
@@ -146,8 +154,6 @@ public class ProcessTimelinePanel extends TimelinePanel{
                 if (t.scheduled!=null)
                   text+=String.format("<br>Scheduled time: <b>%s -- %s</b>",
                       t.scheduled.start.format(formatter),t.scheduled.end.format(formatter));
-                if (t.status!=null)
-                  text+="<br>Status: <b>"+t.status+"</b>";
                 Actor primaryActor = (t.actorsInvolved==null || t.actorsInvolved.isEmpty())?null:t.actorsInvolved.get(0);
                 if (primaryActor!=null) {
                   text += String.format("<br>Primary actor: <b>%s</b> in role <b>%s</b>",
@@ -159,6 +165,10 @@ public class ProcessTimelinePanel extends TimelinePanel{
                           a.id, a.role);
                     }
                 }
+                if (t.status!=null)
+                  text+="<br>Status: <b>"+t.status+"</b>";
+                if (t.outcome!=null)
+                  text+="<br>Outcome: <b>"+t.outcome+"</b>";
                 text+="</html>";
                 return text;
               }
@@ -169,6 +179,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
                 Actor a=actorEntry.getValue();
                 String text=String.format("<html>Process ID: <b>%s</b><br>Type: <b>%s</b>" +
                     "<br>Involved actor: <b>%s</b> in role <b>%s</b></html>",p.id,p.type,a.id,a.role);
+                return text;
               }
 
           String text = String.format("<html>Process ID: <b>%s</b><br>Type: <b>%s</b></html>",

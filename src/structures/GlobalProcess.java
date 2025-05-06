@@ -8,10 +8,8 @@ import java.util.*;
 
 public class GlobalProcess {
   public Map<String, Phase> phases; // defines overall GProc schedule
-  public Set<String> actionTypes;
+  public Map<String, ActionType> actionTypes;
   public Set<String> actorRoles;  //e.g., pc member, reviewer
-  public Map<String, String> actionToPhaseMap;  //key: action type; value: phase name
-  public Map<String, String> actionToActorMap; //key: action type; value: actor role
   public Map<String, Actor> actors;  //key: actor id
 
   public Collection<ProcessInstance> processes;

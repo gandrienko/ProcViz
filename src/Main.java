@@ -1,4 +1,5 @@
 import data.LogLoader;
+import structures.ActionType;
 import structures.Actor;
 import structures.GlobalProcess;
 import viz.ProcessTimelinePanel;
@@ -28,13 +29,11 @@ public class Main {
 
         gProc.actionTypes=loader.getActionTypes();
         gProc.phases=loader.getPhases();
-        gProc.actionToPhaseMap=loader.getActionToPhaseMap();
-        gProc.actionToActorMap=loader.getActionToActorMap();
         gProc.actorRoles=loader.getActorRoles();
         gProc.actors=loader.getActors();
 
         System.out.println("Loaded action types:");
-        for (String action : gProc.actionTypes) {
+        for (String action : gProc.actionTypes.keySet()) {
             System.out.println(" - " + action);
         }
 
@@ -44,13 +43,13 @@ public class Main {
         }
 
         System.out.println("Action Type to Phase Mapping:");
-        for (Map.Entry<String, String> entry : gProc.actionToPhaseMap.entrySet()) {
-          System.out.println(entry.getKey() + " => " + entry.getValue());
+        for (Map.Entry<String, ActionType> entry : gProc.actionTypes.entrySet()) {
+          System.out.println(entry.getKey() + " => " + entry.getValue().phaseName);
         }
 
         System.out.println("Action Type to Actor Roles Mapping:");
-        for (Map.Entry<String, String> entry : gProc.actionToActorMap.entrySet()) {
-          System.out.println(entry.getKey() + " => " + entry.getValue());
+        for (Map.Entry<String, ActionType> entry : gProc.actionTypes.entrySet()) {
+          System.out.println(entry.getKey() + " => " + entry.getValue().actorRole);
         }
         /*
         if (loader.getActorRoles()!=null && !loader.getActorRoles().isEmpty()) {

@@ -15,9 +15,7 @@ public class LogLoader {
   private Map<String, ProcessInstance> processes = new HashMap<>();
 
   private Map<String, Actor> actors = new HashMap<>();
-  private Set<String> actionTypes = new HashSet<>();
-  private Map<String, String> actionToPhaseMap = new HashMap<>();
-  private Map<String, String> actionToActorMap = new HashMap<>(), actionToTargetMap = new HashMap<>();
+  private Map<String, ActionType> actionTypes = new HashMap<>();
   private Set<String> actorRoles = new HashSet<>();
   private Map<String, Phase> phases = new LinkedHashMap<>();
 
@@ -46,7 +44,13 @@ public class LogLoader {
         String[] tokens = line.split(",");
         String action = tokens[0].trim();
         String phase = tokens[1].trim();
-        actionToPhaseMap.put(action, phase);
+        ActionType aType=actionTypes.get(action);
+        if (aType==null) {
+          aType=new ActionType();
+          aType.typeName=action;
+          actionTypes.put(action,aType);
+        }
+        aType.phaseName=phase;
       }
     }
   }
@@ -58,10 +62,22 @@ public class LogLoader {
         String[] tokens = line.split(",");
         String action = tokens[0].trim();
         String role = tokens[1].trim();
-        actionToActorMap.put(action, role);
+        ActionType aType=actionTypes.get(action);
+        if (aType==null) {
+          aType=new ActionType();
+          aType.typeName=action;
+          actionTypes.put(action,aType);
+        }
+        aType.actorRole=role;
         if (tokens.length>2 && tokens[2]!=null && tokens[2].trim().length()>0) {
-          role = tokens[1].trim();
-          actionToTargetMap.put(action, role);
+          aType.targetType = tokens[2].trim();
+          if (aType.targetType.equalsIgnoreCase("actor")) {
+            if (tokens.length>3 && tokens[3]!=null && tokens[3].trim().length()>0) {
+              aType.targetRole=tokens[3].trim();
+              if (!actorRoles.contains(aType.targetRole))
+                actorRoles.add(aType.targetRole);
+            }
+          }
         }
       }
     }
@@ -80,8 +96,16 @@ public class LogLoader {
         LocalDateTime timestamp = LocalDateTime.parse(tokens[1].trim(), dateTimeFormatter);
         String actorId = tokens[2].trim();
         String action = tokens[3].trim();
-
-        actionTypes.add(action);
+        String param=(tokens.length>4)?tokens[4].trim():"";
+        if (param.trim().length()<1)
+          param=null;
+  
+        ActionType aType=actionTypes.get(action);
+        if (aType==null) {
+          aType=new ActionType();
+          aType.typeName=action;
+          actionTypes.put(action,aType);
+        }
 
         ProcessInstance process = processes.computeIfAbsent(submissionId, ProcessInstance::new);
         process.type="SUBMISSION";
@@ -89,7 +113,7 @@ public class LogLoader {
         if (actor==null) {
           actor=new Actor(actorId);
           actors.put(actorId,actor);
-          actor.role=actionToActorMap.get(action);
+          actor.role=aType.actorRole;
           if (actor.role==null) {
             System.out.println("NULL role of actor "+actorId+" in action "+action);
           }
@@ -99,16 +123,15 @@ public class LogLoader {
         process.addActor(actor);
 
         // Determine which phase this action belongs to
-        String phaseName = actionToPhaseMap.get(action);
-        if (phaseName == null) continue;
+        if (aType.phaseName == null) continue;
 
-        Phase phase = phases.get(phaseName);
+        Phase phase = phases.get(aType.phaseName);
         if (phase == null) continue;
 
         // Get or create StateInstance in process
-        StateInstance state = process.getState(phaseName);
+        StateInstance state = process.getState(aType.phaseName);
         if (state == null) {
-          state = new StateInstance(phaseName);
+          state = new StateInstance(aType.phaseName);
           state.setScheduled(new TimeInterval(phase.startDate.atStartOfDay(),
               phase.endDate.atTime(23, 59,59)));
           process.addState(state);
@@ -120,8 +143,28 @@ public class LogLoader {
         //task.id = UUID.randomUUID().toString();
         task.id=String.format("task%04d",++nTaskInstances);
         task.name = action;
-        task.actorsInvolved = Collections.singletonList(actor);
+        task.actorsInvolved = new ArrayList<Actor>(1);
+        task.actorsInvolved.add(actor);
         task.actual = new TimeInterval(timestamp, timestamp);
+        if (param!=null && aType.targetType!=null)
+          if (aType.targetType.equalsIgnoreCase("actor")) {
+            Actor targetActor = actors.get(param);
+            if (targetActor==null) {
+              targetActor=new Actor(param);
+              actors.put(param,targetActor);
+              targetActor.role=aType.targetRole;
+              if (targetActor.role!=null && !actorRoles.contains(targetActor.role))
+                actorRoles.add(targetActor.role);
+            }
+            task.actorsInvolved.add(targetActor);
+          }
+          else
+          if (aType.targetType.equalsIgnoreCase("status"))
+            task.status=param;
+          else
+          if (aType.targetType.equalsIgnoreCase("outcome"))
+            task.outcome=param;
+            
         state.addTask(task);
       }
     }
@@ -132,21 +175,13 @@ public class LogLoader {
     return processes.values();
   }
 
-  public Set<String> getActionTypes() {
+  public Map<String, ActionType> getActionTypes() {
     return actionTypes;
   }
 
 
   public Map<String, Phase> getPhases() {
     return phases;
-  }
-
-  public Map<String, String> getActionToPhaseMap() {
-    return actionToPhaseMap;
-  }
-
-  public Map<String, String> getActionToActorMap() {
-    return actionToActorMap;
   }
 
   public Set<String> getActorRoles() {
