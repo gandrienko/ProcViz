@@ -17,10 +17,12 @@ public class ProcessTimelinePanel extends TimelinePanel{
   protected Map<Rectangle, ProcessInstance> processAreas = null;
   protected Map<String,Map<Rectangle,Actor>> processActorAreas=null;
   protected Map<String,Map<Rectangle,TaskInstance>> processTaskAreas=null;
+  protected Map<String, Color> actorRoleColors=null;
   
   public ProcessTimelinePanel(GlobalProcess gProc) {
     super(gProc.getListOfPhases());
     this.gProc=gProc;
+    actorRoleColors=Utils.generateItemColors(gProc.actorRoles);
     setPreferredSize(new Dimension(1200, 100 + gProc.processes.size() * actorLineSpacing*10));
   }
   
@@ -98,14 +100,18 @@ public class ProcessTimelinePanel extends TimelinePanel{
               g.setColor(Color.darkGray);
               g.drawLine(x0,y0+ actorLineSpacing / 2,x1,y0+ actorLineSpacing / 2+(sortedActors.size()-1)*actorLineSpacing);
             }
-            if (offsetIndex!=null && lastX[offsetIndex]<0) {
-              lastX[offsetIndex]=x0;
-              g.setColor(Color.lightGray);
+            if (offsetIndex!=null) {
+              Color roleColor = (actorRoleColors == null) ? null : actorRoleColors.get(primaryActor.getMainRole());
+              if (roleColor == null)
+                roleColor = Color.gray;
+              if (lastX[offsetIndex] < 0) {
+                lastX[offsetIndex] = x0;
+                g.setColor(new Color(roleColor.getRed(), roleColor.getGreen(), roleColor.getBlue(), 128));
+              }
+              else
+                g.setColor(roleColor);
+              g.drawLine(lastX[offsetIndex], y, x1, y);
             }
-            else
-              g.setColor(Color.gray);
-            if (offsetIndex!=null)
-              g.drawLine(lastX[offsetIndex],y,x1,y);
             g.setColor(sColor);
             g2d.drawOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
             g2d.fillOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
@@ -147,7 +153,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
             for (Map.Entry<Rectangle,TaskInstance> taskEntry:taskAreas.entrySet())
               if (taskEntry.getKey().contains(pt)) {
                 TaskInstance t=taskEntry.getValue();
-                String text = String.format("<html>Process ID: <b>%s</b><br>Type: <b>%s</b>" +
+                String text = String.format("<html>Process ID: <b>%s</b><br>Process type: <b>%s</b>" +
                         "<br>Task ID: <b>%s</b><br>Name: <b>%s</b><br>"+
                     "Actual time: <b>%s -- %s</b>",p.id,p.type,
                     t.id,t.name,t.actual.start.format(formatter),t.actual.end.format(formatter));
@@ -157,12 +163,12 @@ public class ProcessTimelinePanel extends TimelinePanel{
                 Actor primaryActor = (t.actorsInvolved==null || t.actorsInvolved.isEmpty())?null:t.actorsInvolved.get(0);
                 if (primaryActor!=null) {
                   text += String.format("<br>Primary actor: <b>%s</b> in role <b>%s</b>",
-                      primaryActor.id, primaryActor.role);
+                      primaryActor.id, primaryActor.getMainRole());
                   if (t.actorsInvolved.size()>1)
                     for (int i=1; i<t.actorsInvolved.size(); i++) {
                       Actor a=t.actorsInvolved.get(i);
                       text+=String.format("<br>Involved actor: <b>%s</b> in role <b>%s</b>",
-                          a.id, a.role);
+                          a.id, a.getMainRole());
                     }
                 }
                 if (t.status!=null)
@@ -177,12 +183,12 @@ public class ProcessTimelinePanel extends TimelinePanel{
             for (Map.Entry<Rectangle,Actor> actorEntry:actorAreas.entrySet())
               if (actorEntry.getKey().contains(pt)) {
                 Actor a=actorEntry.getValue();
-                String text=String.format("<html>Process ID: <b>%s</b><br>Type: <b>%s</b>" +
-                    "<br>Involved actor: <b>%s</b> in role <b>%s</b></html>",p.id,p.type,a.id,a.role);
+                String text=String.format("<html>Process ID: <b>%s</b><br>Process type: <b>%s</b>" +
+                    "<br>Involved actor: <b>%s</b> in role <b>%s</b></html>",p.id,p.type,a.id,a.getMainRole());
                 return text;
               }
 
-          String text = String.format("<html>Process ID: <b>%s</b><br>Type: <b>%s</b></html>",
+          String text = String.format("<html>Process ID: <b>%s</b><br>Process type: <b>%s</b></html>",
               p.id,p.type);
           return text;
         }

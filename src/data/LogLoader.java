@@ -74,7 +74,8 @@ public class LogLoader {
           if (aType.targetType.equalsIgnoreCase("actor")) {
             if (tokens.length>3 && tokens[3]!=null && tokens[3].trim().length()>0) {
               aType.targetRole=tokens[3].trim();
-              if (!actorRoles.contains(aType.targetRole))
+              if (!aType.targetRole.equalsIgnoreCase("any") &&
+                  !actorRoles.contains(aType.targetRole))
                 actorRoles.add(aType.targetRole);
             }
           }
@@ -106,6 +107,13 @@ public class LogLoader {
           aType.typeName=action;
           actionTypes.put(action,aType);
         }
+        if (aType.actorRole==null) {
+          System.out.println("NULL role of actor "+actorId+" in action "+action);
+        }
+        else
+          if (!aType.actorRole.equalsIgnoreCase("any") &&
+              !actorRoles.contains(aType.actorRole))
+            actorRoles.add(aType.actorRole);
 
         ProcessInstance process = processes.computeIfAbsent(submissionId, ProcessInstance::new);
         process.type="SUBMISSION";
@@ -113,13 +121,9 @@ public class LogLoader {
         if (actor==null) {
           actor=new Actor(actorId);
           actors.put(actorId,actor);
-          actor.role=aType.actorRole;
-          if (actor.role==null) {
-            System.out.println("NULL role of actor "+actorId+" in action "+action);
-          }
-          if (actor.role!=null && !actorRoles.contains(actor.role))
-            actorRoles.add(actor.role);
         }
+        if (aType.actorRole!=null)
+          actor.addRole(aType.actorRole);
         process.addActor(actor);
 
         // Determine which phase this action belongs to
@@ -152,9 +156,12 @@ public class LogLoader {
             if (targetActor==null) {
               targetActor=new Actor(param);
               actors.put(param,targetActor);
-              targetActor.role=aType.targetRole;
-              if (targetActor.role!=null && !actorRoles.contains(targetActor.role))
-                actorRoles.add(targetActor.role);
+            }
+            if (aType.targetRole!=null) {
+              targetActor.addRole(aType.targetRole);
+              if (!aType.targetRole.equalsIgnoreCase("any") &&
+                  !actorRoles.contains(aType.targetRole))
+                actorRoles.add(aType.targetRole);
             }
             task.actorsInvolved.add(targetActor);
           }

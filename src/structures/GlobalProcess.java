@@ -17,7 +17,7 @@ public class GlobalProcess {
   public Set<Actor> getActorsByRole(String role) {
     Set<Actor> result = new HashSet<>();
     for (Actor actor : actors.values()) {
-      if (role.equals(actor.getRole())) {
+      if (role.equals(actor.getMainRole())) {
         result.add(actor);
       }
     }
