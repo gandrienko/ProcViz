@@ -11,7 +11,7 @@ public class TaskInstance {
   public String id;
   public String name;
   public List<Actor> actorsInvolved = new ArrayList<>();;
-  public TaskStatus status;
+  public String status=null;
   public TimeInterval scheduled;
   public TimeInterval actual;
 }

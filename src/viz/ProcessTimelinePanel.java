@@ -15,6 +15,8 @@ public class ProcessTimelinePanel extends TimelinePanel{
   public GlobalProcess gProc=null;
   
   protected Map<Rectangle, ProcessInstance> processAreas = null;
+  protected Map<String,Map<Rectangle,Actor>> processActorAreas=null;
+  protected Map<String,Map<Rectangle,TaskInstance>> processTaskAreas=null;
   
   public ProcessTimelinePanel(GlobalProcess gProc) {
     super(gProc.getListOfPhases());
@@ -43,6 +45,22 @@ public class ProcessTimelinePanel extends TimelinePanel{
       Map<String, Integer> actorLineOffset = new HashMap<>();
       for (int i = 0; i < sortedActors.size(); i++) {
         actorLineOffset.put(sortedActors.get(i).id, i);
+      }
+
+      if (processActorAreas==null)
+        processActorAreas=new HashMap<String,Map<Rectangle,Actor>>(gProc.processes.size());
+      Map<Rectangle,Actor> actorAreas=processActorAreas.get(p.id);
+      if (actorAreas==null) {
+        actorAreas=new HashMap<Rectangle,Actor>(sortedActors.size());
+        processActorAreas.put(p.id,actorAreas);
+      }
+
+      if (processTaskAreas==null)
+        processTaskAreas=new HashMap<String,Map<Rectangle,TaskInstance>>(gProc.processes.size());
+      Map<Rectangle,TaskInstance> taskAreas=processTaskAreas.get(p.id);
+      if (taskAreas==null) {
+        taskAreas=new HashMap<Rectangle,TaskInstance>(100);
+        processTaskAreas.put(p.id,taskAreas);
       }
 
       int x0=-1000;
@@ -88,11 +106,18 @@ public class ProcessTimelinePanel extends TimelinePanel{
             g2d.fillOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
             lastX[offsetIndex]=x2;
             if (maxX<x2) maxX=x2;
+            taskAreas.put(new Rectangle(x1-markRadius,y-markRadius,
+                markDiameter+x2-x1,markDiameter),t);
           }
         }
       }
       Rectangle r=new Rectangle(x0,y0,maxX-x0,maxY-y0);
       processAreas.put(r,p);
+
+      for (int i=0; i<sortedActors.size(); i++)
+        actorAreas.put(new Rectangle(x0-markRadius,y0-markRadius,lastX[i]-x0+markDiameter,markDiameter),
+            sortedActors.get(i));
+
       y0=maxY+actorLineSpacing*3;
     }
     g2d.setStroke(stroke);
@@ -108,7 +133,45 @@ public class ProcessTimelinePanel extends TimelinePanel{
       for (Map.Entry<Rectangle, ProcessInstance> entry : processAreas.entrySet()) {
         if (entry.getKey().contains(pt)) {
           ProcessInstance p = entry.getValue();
-          String text = String.format("<html><b>%s</b><br>Type: %s</html>",
+          //check if the mouse points at a specific task
+          Map<Rectangle,TaskInstance> taskAreas=processTaskAreas.get(p.id);
+          if (taskAreas!=null)
+            for (Map.Entry<Rectangle,TaskInstance> taskEntry:taskAreas.entrySet())
+              if (taskEntry.getKey().contains(pt)) {
+                TaskInstance t=taskEntry.getValue();
+                String text = String.format("<html>Process ID: <b>%s</b><br>Type: <b>%s</b>" +
+                        "<br>Task ID: <b>%s</b><br>Name: <b>%s</b><br>"+
+                    "Actual time: <b>%s -- %s</b>",p.id,p.type,
+                    t.id,t.name,t.actual.start.format(formatter),t.actual.end.format(formatter));
+                if (t.scheduled!=null)
+                  text+=String.format("<br>Scheduled time: <b>%s -- %s</b>",
+                      t.scheduled.start.format(formatter),t.scheduled.end.format(formatter));
+                if (t.status!=null)
+                  text+="<br>Status: <b>"+t.status+"</b>";
+                Actor primaryActor = (t.actorsInvolved==null || t.actorsInvolved.isEmpty())?null:t.actorsInvolved.get(0);
+                if (primaryActor!=null) {
+                  text += String.format("<br>Primary actor: <b>%s</b> in role <b>%s</b>",
+                      primaryActor.id, primaryActor.role);
+                  if (t.actorsInvolved.size()>1)
+                    for (int i=1; i<t.actorsInvolved.size(); i++) {
+                      Actor a=t.actorsInvolved.get(i);
+                      text+=String.format("<br>Involved actor: <b>%s</b> in role <b>%s</b>",
+                          a.id, a.role);
+                    }
+                }
+                text+="</html>";
+                return text;
+              }
+          Map<Rectangle,Actor> actorAreas=processActorAreas.get(p.id);
+          if (actorAreas!=null)
+            for (Map.Entry<Rectangle,Actor> actorEntry:actorAreas.entrySet())
+              if (actorEntry.getKey().contains(pt)) {
+                Actor a=actorEntry.getValue();
+                String text=String.format("<html>Process ID: <b>%s</b><br>Type: <b>%s</b>" +
+                    "<br>Involved actor: <b>%s</b> in role <b>%s</b></html>",p.id,p.type,a.id,a.role);
+              }
+
+          String text = String.format("<html>Process ID: <b>%s</b><br>Type: <b>%s</b></html>",
               p.id,p.type);
           return text;
         }

@@ -86,7 +86,7 @@ public class Main {
         frame.add(controlPanel, BorderLayout.SOUTH);
 
         frame.pack();
-        frame.setSize(frame.getWidth(), 1000);
+        frame.setSize(frame.getWidth()+20, 850);
         frame.setVisible(true);
       }
     }
