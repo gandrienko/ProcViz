@@ -14,10 +14,18 @@ public class Main {
 
     public static void main(String[] args) {
       LogLoader loader = new LogLoader();
+      /**/
       String phasesFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\Timeline25.csv";
       String actionsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\actions2phases.csv";
       String actorsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\actions2roles.csv";
       String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\conf25log.csv";
+      /**/
+      /*
+      String phasesFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\synthetic\\Timeline25.csv";
+      String actionsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\synthetic\\actions2phases.csv";
+      String actorsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\synthetic\\actions2roles.csv";
+      String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\synthetic\\object_centric_log.csv";
+      */
 
       GlobalProcess gProc=new GlobalProcess();
 
