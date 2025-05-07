@@ -118,17 +118,18 @@ public class ProcessTimelinePanel extends TimelinePanel{
             if (offsetIndex!=null)
               lastX[offsetIndex]=x2;
             if (maxX<x2) maxX=x2;
-            taskAreas.put(new Rectangle(x1-markRadius,y-markRadius,
-                markDiameter+x2-x1,markDiameter),t);
+            taskAreas.put(new Rectangle(x1-markRadius-3,y-markRadius-3,
+                markDiameter+x2-x1+6,markDiameter+6),t);
           }
         }
       }
-      Rectangle r=new Rectangle(x0,y0,maxX-x0,maxY-y0);
+      Rectangle r=new Rectangle(x0-3,y0-3,maxX-x0+6,maxY-y0+6);
       processAreas.put(r,p);
 
       for (int i=0; i<sortedActors.size(); i++) {
         int y=  y0 + i * actorLineSpacing + actorLineSpacing / 2;
-        actorAreas.put(new Rectangle(x0-markRadius, y-markRadius, lastX[i]-x0+markDiameter, markDiameter),
+        actorAreas.put(new Rectangle(x0-markRadius-3, y-markRadius-3,
+                lastX[i]-x0+markDiameter+6, markDiameter+6),
             sortedActors.get(i));
       }
 

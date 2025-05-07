@@ -19,18 +19,23 @@ public class TimelinePanel extends JPanel {
   public final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
   // Pastel colors for phases
   public static Color[] pastelColors = {
-      new Color(255, 179, 186), // light pink
-      new Color(255, 223, 186), // peach
-      new Color(255, 255, 186), // light yellow
-      new Color(186, 255, 201), // light green
-      new Color(186, 225, 255), // light blue
-      new Color(218, 186, 255), // light purple
-      new Color(255, 204, 229), // rose
-      new Color(204, 255, 229), // mint
-      new Color(229, 204, 255), // lavender
-      new Color(255, 250, 205), // lemon chiffon
-      new Color(240, 255, 240), // honeydew
-      new Color(255, 239, 213)  // papaya whip
+      new Color(186, 186, 255,180), // light purple
+      new Color(255, 210, 160, 180), // peach
+      new Color(255, 180, 180, 180), // light pink
+      new Color(160, 255, 190, 180), // light green
+      new Color(186, 225, 255, 180), // light blue
+      new Color(255, 180, 216, 180), // rose
+      new Color(255, 255, 160, 180), // light yellow
+      new Color(201, 219, 116, 180), //
+      new Color(229, 180, 255, 180), // lavender
+      new Color(139, 224, 164, 180), //
+      new Color(246, 207, 113, 180), //
+      new Color(180, 255, 228, 180), // mint
+      new Color(248, 156, 116, 180), //
+      new Color(158, 185, 243, 180), //
+      new Color(211, 180, 132, 180), //
+      new Color(180, 151, 231, 180),  //
+      new Color(254, 136, 177, 180) //
   };
 
   public List<Phase> phases=null;
