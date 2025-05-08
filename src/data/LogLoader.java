@@ -148,43 +148,43 @@ public class LogLoader {
             fieldNames[i] = fieldNames[i].toLowerCase();
             String s=fieldNames[i];
             if (s.contains("process") || s.contains("submission"))
-              processIdCN=i;
+              if (processIdCN<0) processIdCN=i; else;
             else
             if (s.contains("date") || s.contains("time"))
-              dateCN=i;
+              if (dateCN<0) dateCN=i; else;
             else
             if (s.contains("action") || s.contains("event"))
               if (!s.contains("id"))
-                actionTypeCN=i;
+                if (actionTypeCN<0) actionTypeCN=i; else;
               else
-                actionIdCN=i;
+                if (actionIdCN<0) actionIdCN=i; else;
             else
             if (s.contains("actor") || s.contains("person") || s.contains("anonymous") ||
                 s.contains("initiator") || s.contains("initiating")) {
               if (s.contains("id"))
-                actorIdCN=i;
+                if (actorIdCN<0) actorIdCN=i; else;
               else
               if (s.contains("role") || s.contains("type"))
-                actorRoleCN=i;
+                if (actorRoleCN<0) actorRoleCN=i; else;
               else
-                actorIdCN=i;
+                if (actorIdCN<0) actorIdCN=i; else;
             }
             else
             if (s.contains("target") || s.contains("subject")) {
               if (s.contains("type") || s.contains("role"))
-                targetTypeCN=i;
+                if (targetTypeCN<0) targetTypeCN=i; else;
               else
-                targetIdCN=i;
+                if (targetIdCN<0) targetIdCN=i; else;
             }
             else
             if (s.contains("status"))
-              statusCN=i;
+              if (statusCN<0) statusCN=i; else;
             else
             if (s.contains("outcome"))
-              outcomeCN=i;
+              if (outcomeCN<0) outcomeCN=i; else;
             else
             if (s.contains("param"))
-              paramCN=i;
+              if (paramCN<0) paramCN=i; else;
           }
           if (processIdCN<0) {
             System.out.println("No field with the process identifiers detected!");
