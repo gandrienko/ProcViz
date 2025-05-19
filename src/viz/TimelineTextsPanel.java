@@ -8,7 +8,7 @@ import java.awt.image.BufferedImage;
 import java.util.List;
 
 public class TimelineTextsPanel extends JPanel {
-  public final int SHOW_TITLES=1, SHOW_TIMES=2;
+  public static final int SHOW_TITLES=1, SHOW_TIMES=2;
 
   protected TimelinePanel timeline=null;
   protected int mode=SHOW_TITLES;
@@ -35,9 +35,7 @@ public class TimelineTextsPanel extends JPanel {
     super.paintComponent(g);
     if (timeline==null)
       return;
-    List<Phase> phases=timeline.phases;
-    if (phases == null || phases.isEmpty()) return;
-
-    Graphics2D g2d = (Graphics2D) g;
+    if (mode==SHOW_TITLES)
+      timeline.paintPhaseNames(g,getHeight());
   }
 }

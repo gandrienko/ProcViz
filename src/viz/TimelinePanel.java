@@ -96,6 +96,36 @@ public class TimelinePanel extends JPanel {
     return phaseColors.get(name);
   }
 
+  public void paintPhaseNames(Graphics g, int textHeight) {
+    if (phases == null || phases.isEmpty()) return;
+
+    Graphics2D g2d = (Graphics2D) g;
+    int width = getWidth();
+    int y0=(textHeight-g2d.getFontMetrics().getHeight())/2;
+
+    for (int i = 0; i < phases.size(); i++) {
+      Phase p = phases.get(i);
+      LocalDateTime t1=p.startDate.atStartOfDay(),
+          t2=p.endDate.atTime(23,59,59);
+      long secondsFromStart = ChronoUnit.SECONDS.between(minDate,t1);
+      long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,t2);
+
+      int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
+      int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
+
+      g2d.setColor(Color.white);
+      g2d.fillRect(x1, y0, width-x1+1, textHeight);
+
+      g2d.setColor(phaseColors.get(p.name));
+      g2d.fillRect(x1, y0, x2-x1+1, textHeight);
+
+      g2d.setColor(Color.lightGray);
+      g2d.drawRect(x1, y0, x2-x1, textHeight);
+      g2d.setColor(Color.BLACK);
+      g2d.drawString(p.name, x1 + 5, y0 + g2d.getFontMetrics().getAscent());
+    }
+  }
+
   @Override
   protected void paintComponent(Graphics g) {
     super.paintComponent(g);

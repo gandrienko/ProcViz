@@ -4,6 +4,7 @@ import structures.Actor;
 import structures.GlobalProcess;
 import viz.ProcessTimelinePanel;
 import viz.TimelinePanel;
+import viz.TimelineTextsPanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -79,14 +80,21 @@ public class Main {
         System.err.println("Error reading the log file: " + e.getMessage());
       }
       if (gProc.phases!=null && !gProc.phases.isEmpty()) {
-        ProcessTimelinePanel panel = new ProcessTimelinePanel(gProc);
+        ProcessTimelinePanel processMainPanel = new ProcessTimelinePanel(gProc);
 
         JFrame frame = new JFrame("Process Timeline");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
-        JScrollPane scrollPane = new JScrollPane(panel);
+        JScrollPane scrollPane = new JScrollPane(processMainPanel);
         scrollPane.getVerticalScrollBar().setUnitIncrement(20);
-        frame.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel topPanel=new TimelineTextsPanel(processMainPanel,TimelineTextsPanel.SHOW_TITLES);
+        JPanel processPanel=new JPanel();
+        processPanel.setLayout(new BorderLayout());
+        processPanel.add(topPanel,BorderLayout.NORTH);
+        processPanel.add(scrollPane, BorderLayout.CENTER);
+
+        frame.add(processPanel, BorderLayout.CENTER);
 
         JPanel controlPanel = new JPanel();
         controlPanel.add(new JLabel("Interaction controls coming soon..."));
