@@ -6,8 +6,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
@@ -19,23 +17,23 @@ public class TimelinePanel extends JPanel {
   public final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
   // Pastel colors for phases
   public static Color[] pastelColors = {
-      new Color(186, 186, 255,180), // light purple
-      new Color(255, 210, 160, 180), // peach
-      new Color(255, 180, 180, 180), // light pink
-      new Color(160, 255, 190, 180), // light green
-      new Color(186, 225, 255, 180), // light blue
-      new Color(255, 180, 216, 180), // rose
-      new Color(255, 255, 160, 180), // light yellow
-      new Color(201, 219, 116, 180), //
-      new Color(229, 180, 255, 180), // lavender
-      new Color(139, 224, 164, 180), //
-      new Color(246, 207, 113, 180), //
-      new Color(180, 255, 228, 180), // mint
-      new Color(248, 156, 116, 180), //
-      new Color(158, 185, 243, 180), //
-      new Color(211, 180, 132, 180), //
-      new Color(180, 151, 231, 180),  //
-      new Color(254, 136, 177, 180) //
+      new Color(186, 186, 255,160), // light purple
+      new Color(255, 210, 160, 160), // peach
+      new Color(255, 180, 180, 160), // light pink
+      new Color(160, 255, 190, 160), // light green
+      new Color(186, 225, 255, 160), // light blue
+      new Color(255, 180, 216, 160), // rose
+      new Color(255, 255, 160, 160), // light yellow
+      new Color(201, 219, 116, 160), //
+      new Color(229, 180, 255, 160), // lavender
+      new Color(139, 224, 164, 160), //
+      new Color(246, 207, 113, 160), //
+      new Color(180, 255, 228, 160), // mint
+      new Color(248, 156, 116, 160), //
+      new Color(158, 185, 243, 160), //
+      new Color(211, 180, 132, 160), //
+      new Color(180, 151, 231, 160),  //
+      new Color(254, 136, 177, 160) //
   };
 
   public List<Phase> phases=null;
@@ -90,6 +88,12 @@ public class TimelinePanel extends JPanel {
         }
       }
     return null;
+  }
+
+  public Color getPhaseColor(String name) {
+    if (phaseColors==null)
+      return null;
+    return phaseColors.get(name);
   }
 
   @Override
