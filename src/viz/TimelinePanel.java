@@ -178,7 +178,7 @@ public class TimelinePanel extends JPanel {
     int height = getHeight();
 
     fontHeight=g2d.getFontMetrics().getHeight();
-    yTop = 5; yBottom=height - fontHeight-5;
+    yTop = 0; yBottom=height; // - fontHeight-5;
     sectionHeight = yBottom-yTop;
     
     if (phaseAreas==null)
@@ -206,6 +206,8 @@ public class TimelinePanel extends JPanel {
       g2d.drawRect(x1, yTop, x2-x1, sectionHeight);
       Rectangle r=new Rectangle(x1,yTop,x2-x1,sectionHeight);
       phaseAreas.put(r,p);
+
+      /*
       g2d.setColor(Color.BLACK);
       g2d.drawString(p.name, x1 + 5, yTop + fontHeight);
   
@@ -214,12 +216,13 @@ public class TimelinePanel extends JPanel {
       g2d.setColor(Color.BLACK);
       g2d.drawLine(x1, yBottom, x1, yBottom + 5);
       g2d.drawString(p.startDate.format(formatter), x1 + 2, yBottom+fontHeight);
+      */
     }
 
     // Draw timeline axis
     g2d.setColor(Color.gray);
     g2d.drawLine(0, yTop + sectionHeight, width, yTop + sectionHeight);
-
+    /*
     String endStr=maxDate.format(formatter);
     int x=width-g2d.getFontMetrics().stringWidth(endStr)-3;
     g2d.setColor(Color.white);
@@ -227,5 +230,6 @@ public class TimelinePanel extends JPanel {
     g2d.setColor(Color.BLACK);
     g2d.drawString(endStr,x,yBottom+fontHeight);
     g2d.drawLine(width-1, yBottom, width-1, yBottom + 5);
+    */
   }
 }
