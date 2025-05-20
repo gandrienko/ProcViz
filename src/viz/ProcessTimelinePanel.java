@@ -28,6 +28,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
   
   protected void paintComponent(Graphics g) {
     super.paintComponent(g); // Draw background phases
+    /**/
     Graphics2D g2d=(Graphics2D) g;
     int width = getWidth();
     
@@ -138,6 +139,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
     g2d.setStroke(stroke);
     setPreferredSize(new Dimension(width, y0+2*actorLineSpacing));
     setSize(getPreferredSize());
+    /**/
   }
   
   

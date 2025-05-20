@@ -92,6 +92,8 @@ public class Main {
         JScrollPane scrollPane = new JScrollPane(processMainPanel);
         scrollPane.getVerticalScrollBar().setUnitIncrement(20);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        JScrollBar hScrollBar = scrollPane.getHorizontalScrollBar();
+        JScrollBar vScrollBar = scrollPane.getVerticalScrollBar();
 
         JPanel topPanel=new TimelineTextsPanel(processMainPanel,TimelineTextsPanel.SHOW_TITLES);
         JPanel bottomPanel=new TimelineTextsPanel(processMainPanel,TimelineTextsPanel.SHOW_TIMES);
@@ -99,23 +101,39 @@ public class Main {
         JViewport topViewport = new JViewport(), bottomViewport = new JViewport();
         topViewport.setView(topPanel);
         bottomViewport.setView(bottomPanel);
-        JScrollBar hScrollBar = scrollPane.getHorizontalScrollBar();
-        JScrollBar vScrollBar = scrollPane.getVerticalScrollBar();
+
+        processMainPanel.addComponentListener(new ComponentAdapter() {
+          @Override
+          public void componentResized(ComponentEvent e) {
+            super.componentResized(e);
+            int width=processMainPanel.getWidth();
+            topPanel.setSize(width,topPanel.getHeight());
+            bottomPanel.setSize(width,bottomPanel.getHeight());
+            topViewport.revalidate();
+            bottomViewport.revalidate();
+            int scrollX=(hScrollBar.isVisible())?hScrollBar.getValue():0;
+            topViewport.setViewPosition(new Point(scrollX, 0));
+            bottomViewport.setViewPosition(new Point(scrollX, 0));
+          }
+        });
 
         hScrollBar.addAdjustmentListener(e -> {
           int scrollX = e.getValue();
           topViewport.setViewPosition(new Point(scrollX, 0));
           bottomViewport.setViewPosition(new Point(scrollX, 0));
         });
-        /**/
+        /*
         scrollPane.getViewport().addChangeListener(new ChangeListener() {
           @Override
           public void stateChanged(ChangeEvent e) {
-            topPanel.setSize(processMainPanel.getWidth(),topPanel.getHeight());
-            bottomPanel.setSize(processMainPanel.getWidth(),bottomPanel.getHeight());
+            //topPanel.setSize(processMainPanel.getWidth(),topPanel.getHeight());
+            //bottomPanel.setSize(processMainPanel.getWidth(),bottomPanel.getHeight());
+            int scrollX=(hScrollBar.isVisible())?hScrollBar.getValue():0;
+            topViewport.setViewPosition(new Point(scrollX, 0));
+            bottomViewport.setViewPosition(new Point(scrollX, 0));
           }
         });
-        /**/
+        */
 
         //int scrollbarWidth = UIManager.getInt("ScrollBar.width");
         int scrollbarWidth = vScrollBar.getPreferredSize().width+3;
@@ -133,6 +151,22 @@ public class Main {
         processPanel.add(topContainer,BorderLayout.NORTH);
         processPanel.add(scrollPane, BorderLayout.CENTER);
         processPanel.add(bottomContainer,BorderLayout.SOUTH);
+
+        processPanel.addComponentListener(new ComponentAdapter() {
+          @Override
+          public void componentResized(ComponentEvent e) {
+            super.componentResized(e);
+            int width=processMainPanel.getWidth();
+            topPanel.setSize(width,topPanel.getHeight());
+            bottomPanel.setSize(width,bottomPanel.getHeight());
+            width-=scrollbarWidth;
+            topViewport.setSize(width,topViewport.getHeight());
+            bottomViewport.setSize(width,bottomViewport.getHeight());
+            int scrollX=(hScrollBar.isVisible())?hScrollBar.getValue():0;
+            topViewport.setViewPosition(new Point(scrollX, 0));
+            bottomViewport.setViewPosition(new Point(scrollX, 0));
+          }
+        });
 
         frame.add(processPanel, BorderLayout.CENTER);
 
