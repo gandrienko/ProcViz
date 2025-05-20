@@ -17,7 +17,7 @@ public class TimelineTextsPanel extends JPanel {
   public TimelineTextsPanel(TimelinePanel timeline, int mode) {
     this.timeline=timeline; this.mode=mode;
     getFontHeight();
-    setPreferredSize(new Dimension(1000,fontHeight+6));
+    setPreferredSize(new Dimension(timeline.getPreferredSize().width,fontHeight+6));
   }
 
   public static void getFontHeight() {
@@ -37,5 +37,8 @@ public class TimelineTextsPanel extends JPanel {
       return;
     if (mode==SHOW_TITLES)
       timeline.paintPhaseNames(g,getHeight());
+    else
+      if (mode==SHOW_TIMES)
+        timeline.paintPhaseDates(g,getHeight());
   }
 }

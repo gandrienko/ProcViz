@@ -90,10 +90,10 @@ public class TimelinePanel extends JPanel {
     return null;
   }
 
-  public Color getPhaseColor(String name) {
+  public Color getPhaseColor(int idx) {
     if (phaseColors==null)
       return null;
-    return phaseColors.get(name);
+    return phaseColors.get(phases.get(idx).name);
   }
 
   public void paintPhaseNames(Graphics g, int textHeight) {
@@ -124,6 +124,48 @@ public class TimelinePanel extends JPanel {
       g2d.setColor(Color.BLACK);
       g2d.drawString(p.name, x1 + 5, y0 + g2d.getFontMetrics().getAscent());
     }
+  }
+
+  public void paintPhaseDates(Graphics g, int textHeight) {
+    if (phases == null || phases.isEmpty()) return;
+
+    Graphics2D g2d = (Graphics2D) g;
+    int width = getWidth();
+    int y0=(textHeight-g2d.getFontMetrics().getHeight())/2;
+
+    for (int i = 0; i < phases.size(); i++) {
+      Phase p = phases.get(i);
+      LocalDateTime t1=p.startDate.atStartOfDay(),
+          t2=p.endDate.atTime(23,59,59);
+      long secondsFromStart = ChronoUnit.SECONDS.between(minDate,t1);
+      long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,t2);
+
+      int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
+      int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
+
+      g2d.setColor(Color.white);
+      g2d.fillRect(x1, y0, width-x1+1, textHeight);
+
+      g2d.setColor(phaseColors.get(p.name));
+      g2d.fillRect(x1, y0, x2-x1+1, textHeight);
+
+      g2d.setColor(Color.lightGray);
+      g2d.drawRect(x1, y0, x2-x1, textHeight);
+      g2d.setColor(Color.BLACK);
+      g2d.drawString(p.startDate.format(formatter), x1 + 2, y0 + g2d.getFontMetrics().getAscent());
+    }
+    //Draw end date
+    String endStr=maxDate.format(formatter);
+    int x=width-g2d.getFontMetrics().stringWidth(endStr)-3;
+    g2d.setColor(getPhaseColor(phases.size()-1));
+    g2d.fillRect(x-3,y0,width-x+3,textHeight);
+    g2d.setColor(Color.BLACK);
+    g2d.drawString(endStr,x,y0 + g2d.getFontMetrics().getAscent());
+    g2d.drawLine(width-1, y0, width-1, y0 + 5);
+
+    // Draw timeline axis
+    g2d.setColor(Color.gray);
+    g2d.drawLine(0, 0, width, 0);
   }
 
   @Override

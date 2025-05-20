@@ -7,7 +7,11 @@ import viz.TimelinePanel;
 import viz.TimelineTextsPanel;
 
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.io.*;
 import java.util.*;
 
@@ -87,12 +91,48 @@ public class Main {
         frame.setLayout(new BorderLayout());
         JScrollPane scrollPane = new JScrollPane(processMainPanel);
         scrollPane.getVerticalScrollBar().setUnitIncrement(20);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 
         JPanel topPanel=new TimelineTextsPanel(processMainPanel,TimelineTextsPanel.SHOW_TITLES);
+        JPanel bottomPanel=new TimelineTextsPanel(processMainPanel,TimelineTextsPanel.SHOW_TIMES);
+
+        JViewport topViewport = new JViewport(), bottomViewport = new JViewport();
+        topViewport.setView(topPanel);
+        bottomViewport.setView(bottomPanel);
+        JScrollBar hScrollBar = scrollPane.getHorizontalScrollBar();
+        JScrollBar vScrollBar = scrollPane.getVerticalScrollBar();
+
+        hScrollBar.addAdjustmentListener(e -> {
+          int scrollX = e.getValue();
+          topViewport.setViewPosition(new Point(scrollX, 0));
+          bottomViewport.setViewPosition(new Point(scrollX, 0));
+        });
+        /**/
+        scrollPane.getViewport().addChangeListener(new ChangeListener() {
+          @Override
+          public void stateChanged(ChangeEvent e) {
+            topPanel.setSize(processMainPanel.getWidth(),topPanel.getHeight());
+            bottomPanel.setSize(processMainPanel.getWidth(),bottomPanel.getHeight());
+          }
+        });
+        /**/
+
+        //int scrollbarWidth = UIManager.getInt("ScrollBar.width");
+        int scrollbarWidth = vScrollBar.getPreferredSize().width+3;
+        JPanel topContainer=new JPanel();
+        topContainer.setLayout(new BorderLayout());
+        topContainer.add(topViewport,BorderLayout.CENTER);
+        topContainer.add(Box.createRigidArea(new Dimension(scrollbarWidth, 1)), BorderLayout.EAST);
+        JPanel bottomContainer=new JPanel();
+        bottomContainer.setLayout(new BorderLayout());
+        bottomContainer.add(bottomViewport,BorderLayout.CENTER);
+        bottomContainer.add(Box.createRigidArea(new Dimension(scrollbarWidth, 1)), BorderLayout.EAST);
+
         JPanel processPanel=new JPanel();
         processPanel.setLayout(new BorderLayout());
-        processPanel.add(topPanel,BorderLayout.NORTH);
+        processPanel.add(topContainer,BorderLayout.NORTH);
         processPanel.add(scrollPane, BorderLayout.CENTER);
+        processPanel.add(bottomContainer,BorderLayout.SOUTH);
 
         frame.add(processPanel, BorderLayout.CENTER);
 
@@ -101,7 +141,7 @@ public class Main {
         frame.add(controlPanel, BorderLayout.SOUTH);
 
         frame.pack();
-        frame.setSize(frame.getWidth()+20, 850);
+        frame.setSize(frame.getWidth(), 850);
         frame.setVisible(true);
       }
     }
