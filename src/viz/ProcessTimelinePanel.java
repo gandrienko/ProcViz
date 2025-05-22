@@ -4,15 +4,14 @@ import structures.*;
 
 import java.awt.*;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public class ProcessTimelinePanel extends TimelinePanel{
   public static int markRadius=4, markDiameter=markRadius*2, actorLineSpacing=8;
+  public static int PROCESS_MODE=1, ACTOR_MODE=2;
   
   public GlobalProcess gProc=null;
+  public int mode=PROCESS_MODE;
   
   protected Map<Rectangle, ProcessInstance> processAreas = null;
   protected Map<String,Map<Rectangle,Actor>> processActorAreas=null;
@@ -28,23 +27,30 @@ public class ProcessTimelinePanel extends TimelinePanel{
   
   protected void paintComponent(Graphics g) {
     super.paintComponent(g); // Draw background phases
-    /**/
-    Graphics2D g2d=(Graphics2D) g;
+    if (mode==PROCESS_MODE)
+      paintByProcesses(g);
+    else
+      if (mode==ACTOR_MODE)
+        paintByActors(g);
+  }
+
+  public void paintByProcesses(Graphics g) {
     int width = getWidth();
-    
+
+    Graphics2D g2d=(Graphics2D) g;
     Stroke stroke=g2d.getStroke();
     g2d.setStroke(new BasicStroke(2));
-  
+
     if (processAreas==null)
       processAreas=new HashMap<Rectangle,ProcessInstance>(gProc.processes.size());
     else
       processAreas.clear();
-    
+
     int y0=yTop+actorLineSpacing+fontHeight;
     for (ProcessInstance p: gProc.processes) {
       ArrayList<Actor> sortedActors = new ArrayList<Actor>(p.actors);
       sortedActors.sort(Comparator.comparing(a -> a.id));
-  
+
       Map<String, Integer> actorLineOffset = new HashMap<>();
       for (int i = 0; i < sortedActors.size(); i++) {
         actorLineOffset.put(sortedActors.get(i).id, i);
@@ -74,7 +80,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
       int lastX[]=new int[sortedActors.size()];
       for (int i=0; i<lastX.length; i++)
         lastX[i]=-1000;
-      
+
       int maxY=y0, maxX=-1000;
       for (int i=0; i<p.states.size(); i++) {
         StateInstance s=p.states.get(i);
@@ -90,7 +96,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
             long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,t.actual.end);
             int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
             int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
-  
+
             Actor primaryActor = (t.actorsInvolved==null || t.actorsInvolved.isEmpty())?null:t.actorsInvolved.get(0);
             Integer offsetIndex = (primaryActor==null)?null:actorLineOffset.get(primaryActor.id);
             int y= (offsetIndex == null)? y0:  y0 + offsetIndex * actorLineSpacing + actorLineSpacing / 2;
@@ -137,11 +143,57 @@ public class ProcessTimelinePanel extends TimelinePanel{
       y0=maxY+actorLineSpacing*3;
     }
     g2d.setStroke(stroke);
-    setPreferredSize(new Dimension(width, y0+2*actorLineSpacing));
-    setSize(getPreferredSize());
-    /**/
   }
-  
+
+
+  public void paintByActors(Graphics g) {
+    int width = getWidth();
+
+    Graphics2D g2d=(Graphics2D) g;
+    Stroke stroke=g2d.getStroke();
+    g2d.setStroke(new BasicStroke(2));
+
+    if (processAreas!=null)
+      processAreas.clear();
+    ArrayList<Actor> sortedActors = new ArrayList<Actor>(gProc.actors.values());
+    sortedActors.sort(Comparator.comparing(a -> a.id));
+
+    if (processActorAreas==null)
+      processActorAreas=new HashMap<String,Map<Rectangle,Actor>>(gProc.processes.size());
+    if (processTaskAreas==null)
+      processTaskAreas=new HashMap<String,Map<Rectangle,TaskInstance>>(gProc.processes.size());
+
+    int y0=yTop+actorLineSpacing+fontHeight;
+    for (int i=0; i<sortedActors.size(); i++) {
+      Actor actor=sortedActors.get(i);
+      HashSet<ProcessInstance> aProc=new HashSet<ProcessInstance>();
+      for (ProcessInstance p: gProc.processes)
+        if (p.actors.contains(actor))
+          aProc.add(p);
+      if (aProc.isEmpty())
+        continue;
+
+      for (ProcessInstance p:aProc) {
+        Map<Rectangle,Actor> actorAreas=processActorAreas.get(p.id);
+        if (actorAreas==null) {
+          actorAreas=new HashMap<Rectangle,Actor>(sortedActors.size());
+          processActorAreas.put(p.id,actorAreas);
+        }
+        else
+          actorAreas.clear();
+
+        Map<Rectangle,TaskInstance> taskAreas=processTaskAreas.get(p.id);
+        if (taskAreas==null) {
+          taskAreas=new HashMap<Rectangle,TaskInstance>(100);
+          processTaskAreas.put(p.id,taskAreas);
+        }
+        else
+          taskAreas.clear();
+      }
+    }
+    g2d.setStroke(stroke);
+  }
+
   
   public String getToolTipText(Point pt) {
     if (pt==null)
