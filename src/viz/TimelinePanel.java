@@ -70,24 +70,29 @@ public class TimelinePanel extends JPanel {
       }
     });
   }
-  
-  public String getToolTipText(Point pt) {
+
+  public Phase getPhaseForPoint(Point pt) {
     if (pt==null)
       return null;
     if (phaseAreas!=null)
       for (Map.Entry<Rectangle, Phase> entry : phaseAreas.entrySet()) {
-        if (entry.getKey().contains(pt)) {
-          Phase phase = entry.getValue();
-          long duration = ChronoUnit.DAYS.between(phase.startDate, phase.endDate)+1;
-          String text = String.format("<html><b>%s</b><br>Start: %s<br>End: %s<br>Duration: %d days</html>",
-              phase.name,
-              phase.startDate.format(formatter),
-              phase.endDate.format(formatter),
-              duration);
-          return text;
-        }
+        if (entry.getKey().contains(pt))
+          return entry.getValue();
       }
     return null;
+  }
+  
+  public String getToolTipText(Point pt) {
+    Phase phase = getPhaseForPoint(pt);
+    if (phase==null)
+      return null;
+    long duration = ChronoUnit.DAYS.between(phase.startDate, phase.endDate)+1;
+    String text = String.format("<html><b>%s</b><br>Start: %s<br>End: %s<br>Duration: %d days</html>",
+        phase.name,
+        phase.startDate.format(formatter),
+        phase.endDate.format(formatter),
+        duration);
+    return text;
   }
 
   public Color getPhaseColor(int idx) {
@@ -157,7 +162,8 @@ public class TimelinePanel extends JPanel {
     //Draw end date
     String endStr=maxDate.format(formatter);
     int x=width-g2d.getFontMetrics().stringWidth(endStr)-3;
-    g2d.setColor(getPhaseColor(phases.size()-1));
+    Phase phase=getPhaseForPoint(new Point(x,y0));
+    g2d.setColor((phase==null)?Color.white:phaseColors.get(phase.name));
     g2d.fillRect(x-3,y0,width-x+3,textHeight);
     g2d.setColor(Color.BLACK);
     g2d.drawString(endStr,x,y0 + g2d.getFontMetrics().getAscent());

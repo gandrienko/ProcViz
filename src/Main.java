@@ -85,6 +85,7 @@ public class Main {
       }
       if (gProc.phases!=null && !gProc.phases.isEmpty()) {
         ProcessTimelinePanel processMainPanel = new ProcessTimelinePanel(gProc);
+        int origPrefWidth=processMainPanel.getPreferredSize().width;
 
         JFrame frame = new JFrame("Process Timeline");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -106,7 +107,17 @@ public class Main {
           @Override
           public void componentResized(ComponentEvent e) {
             super.componentResized(e);
-            int width=processMainPanel.getWidth();
+            int width=processMainPanel.getPreferredSize().width;
+            if (width>origPrefWidth && hScrollBar.isVisible()) {
+              processMainPanel.setPreferredSize(new Dimension(origPrefWidth,processMainPanel.getHeight()));
+              processMainPanel.setSize(origPrefWidth,processMainPanel.getHeight());
+              scrollPane.revalidate();
+            }
+            if (width!=topPanel.getPreferredSize().width) {
+              topPanel.setPreferredSize(new Dimension(width,topPanel.getHeight()));
+              bottomPanel.setPreferredSize(new Dimension(width,bottomPanel.getHeight()));
+            }
+            width=processMainPanel.getWidth();
             topPanel.setSize(width,topPanel.getHeight());
             bottomPanel.setSize(width,bottomPanel.getHeight());
             topViewport.revalidate();
