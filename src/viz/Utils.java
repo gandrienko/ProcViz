@@ -1,8 +1,8 @@
 package viz;
 
 import java.awt.*;
-import java.awt.List;
 import java.util.*;
+import java.util.List;
 
 public class Utils {
 
@@ -18,7 +18,7 @@ public class Utils {
       new Color(247, 129, 191) // Pink
   };
 
-  public static Map<String, Color> generateItemColors(Set<String> items) {
+  public static Map<String, Color> generateItemColors(List<String> items) {
     if (items==null || items.isEmpty())
       return null;
     Map<String, Color> itemColors = new HashMap<>();

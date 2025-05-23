@@ -3,6 +3,7 @@ package data;
 import structures.*;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -16,7 +17,7 @@ public class LogLoader {
 
   private Map<String, Actor> actors = new HashMap<>();
   private Map<String, ActionType> actionTypes = new HashMap<>();
-  private Set<String> actorRoles = new HashSet<>();
+  private List<String> actorRoles = new ArrayList<String>();
   private Map<String, Phase> phases = new LinkedHashMap<>();
 
   public static DateTimeFormatter dateFormatters[]= {
@@ -128,8 +129,39 @@ public class LogLoader {
     }
   }
 
+  public static List<String> readRolesIfExists(String logFilePath) {
+    File logFile = new File(logFilePath);
+    File parentDir = logFile.getParentFile();
+
+    if (parentDir == null) {
+      System.err.println("Unable to determine parent directory of log file.");
+      return null;
+    }
+
+    File rolesFile = new File(parentDir, "roles.txt");
+
+    if (rolesFile.exists() && rolesFile.isFile()) {
+      List<String> roles = new ArrayList<>();
+      try (BufferedReader reader = new BufferedReader(new FileReader(rolesFile))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          line = line.trim();
+          if (!line.isEmpty()) {
+            roles.add(line);
+          }
+        }
+      } catch (IOException e) {}
+      if (!roles.isEmpty())
+        return roles;
+    }
+
+    return null;
+  }
+
   public boolean loadLog(String logFilePath) {
     int nTaskInstances=0;
+
+    actorRoles=readRolesIfExists(logFilePath);
 
     try (BufferedReader br = new BufferedReader(new FileReader(logFilePath))) {
       String line; // header
@@ -246,7 +278,14 @@ public class LogLoader {
         Actor actor = actors.get(actorId);
         if (actor==null) {
           actor=new Actor(actorId);
+          actor.start=actor.end=timestamp;
           actors.put(actorId,actor);
+        }
+        else {
+          if (timestamp.isBefore(actor.start))
+            actor.start=timestamp;
+          if (timestamp.isAfter(actor.end))
+            actor.end=timestamp;
         }
         if (actorRole!=null)
           actor.addRole(actorRole);
@@ -316,7 +355,14 @@ public class LogLoader {
           Actor targetActor = actors.get(targetActorId);
           if (targetActor==null) {
             targetActor=new Actor(targetActorId);
-            actors.put(param,targetActor);
+            targetActor.start=targetActor.end=timestamp;
+            actors.put(targetActorId,targetActor);
+          }
+          else {
+            if (timestamp.isBefore(targetActor.start))
+              targetActor.start=timestamp;
+            if (timestamp.isAfter(targetActor.end))
+              targetActor.end=timestamp;
           }
           if (targetActorRole==null)
             targetActorRole=aType.targetRole;
@@ -358,7 +404,7 @@ public class LogLoader {
     return phases;
   }
 
-  public Set<String> getActorRoles() {
+  public List<String> getActorRoles() {
     return actorRoles;
   }
 

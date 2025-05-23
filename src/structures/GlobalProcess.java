@@ -10,7 +10,7 @@ import java.util.*;
 public class GlobalProcess {
   public Map<String, Phase> phases; // defines overall GProc schedule
   public Map<String, ActionType> actionTypes;
-  public Set<String> actorRoles;  //e.g., pc member, reviewer
+  public List<String> actorRoles;  //e.g., pc member, reviewer
   public Map<String, Actor> actors;  //key: actor id
 
   public Collection<ProcessInstance> processes;
@@ -23,6 +23,29 @@ public class GlobalProcess {
       }
     }
     return result;
+  }
+
+  public List<Actor> getActorsSorted(Collection<Actor> actors) {
+    if (actors==null || actors.isEmpty())
+      return null;
+    if (actorRoles==null || actorRoles.size()<2) {
+      ArrayList<Actor> sortedActors = new ArrayList<Actor>(actors);
+      Collections.sort(sortedActors);
+      return sortedActors;
+    }
+    ArrayList<Actor> sortedActors = new ArrayList<Actor>(actors.size());
+    ArrayList<Actor> roleActors=new ArrayList<Actor>(actors.size());
+    for (int rIdx=0; rIdx<actorRoles.size(); rIdx++) {
+      roleActors.clear();
+      String role=actorRoles.get(rIdx);
+      for (Actor actor : actors) {
+        if (role.equals(actor.getMainRole()) && !sortedActors.contains(actor))
+          roleActors.add(actor);
+      }
+      Collections.sort(roleActors);
+      sortedActors.addAll(roleActors);
+    }
+    return sortedActors;
   }
 
   public List<Phase> getListOfPhases() {

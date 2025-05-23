@@ -1,5 +1,6 @@
 package structures;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -7,9 +8,11 @@ import java.util.Map;
  * Represents a PC member, reviewer, chair, or external actor (in other scenarios).
  */
 
-public class Actor {
+public class Actor implements Comparable<Actor>{
   public String id;
   public Map<String,Integer> roles=null;
+  public LocalDateTime start;
+  public LocalDateTime end;
 
   public Actor(String id) {
     this.id = id;
@@ -38,5 +41,20 @@ public class Actor {
         mainRole=e.getKey();
       }
     return mainRole;
+  }
+
+  public int compareTo(Actor a) {
+    if (a==null) return -1;
+    if (start==null)
+      if (a.start==null)
+        return id.compareTo(a.id);
+      else
+        return 1;
+    if (a.start.equals(start))
+      if (a.end.equals(end))
+        return id.compareTo(a.id);
+      else
+        return (end.isBefore(a.end))?-1:1;
+    return (start.isBefore(a.start))?-1:1;
   }
 }

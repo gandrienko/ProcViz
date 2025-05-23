@@ -3,6 +3,7 @@ package viz;
 import structures.*;
 
 import java.awt.*;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.List;
@@ -12,10 +13,11 @@ public class ProcessTimelinePanel extends TimelinePanel{
   public static int PROCESS_MODE=1, ACTOR_MODE=2;
   
   public GlobalProcess gProc=null;
-  public int mode=ACTOR_MODE;
+  public int mode=PROCESS_MODE;
   
   protected Map<Rectangle, ProcessInstance> processAreas = null;
   protected Map<String,Map<Rectangle,Actor>> processActorAreas=null;
+  protected Map<Rectangle,Actor> actorAreas=null;
   protected Map<String,Map<Rectangle,TaskInstance>> processTaskAreas=null;
   protected Map<String, Color> actorRoleColors=null;
   
@@ -54,25 +56,26 @@ public class ProcessTimelinePanel extends TimelinePanel{
       processActorAreas=new HashMap<String,Map<Rectangle,Actor>>(gProc.processes.size());
     else
       processActorAreas.clear();
+    if (actorAreas!=null)
+      actorAreas.clear();;
 
     int y0=yTop+2*actorLineSpacing;
 
     for (ProcessInstance p: gProc.processes) {
-      ArrayList<Actor> sortedActors = new ArrayList<Actor>(p.actors);
-      sortedActors.sort(Comparator.comparing(a -> a.id));
+      List<Actor> sortedActors = gProc.getActorsSorted(p.actors);
 
       Map<String, Integer> actorLineOffset = new HashMap<>();
       for (int i = 0; i < sortedActors.size(); i++) {
         actorLineOffset.put(sortedActors.get(i).id, i);
       }
 
-      Map<Rectangle,Actor> actorAreas=processActorAreas.get(p.id);
-      if (actorAreas==null) {
-        actorAreas=new HashMap<Rectangle,Actor>(sortedActors.size());
-        processActorAreas.put(p.id,actorAreas);
+      Map<Rectangle,Actor> actorProcAreas=processActorAreas.get(p.id);
+      if (actorProcAreas==null) {
+        actorProcAreas=new HashMap<Rectangle,Actor>(sortedActors.size());
+        processActorAreas.put(p.id,actorProcAreas);
       }
       else
-        actorAreas.clear();
+        actorProcAreas.clear();
 
       Map<Rectangle,TaskInstance> taskAreas=processTaskAreas.get(p.id);
       if (taskAreas==null) {
@@ -141,7 +144,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
 
       for (int i=0; i<sortedActors.size(); i++) {
         int y=  y0 + i * actorLineSpacing + actorLineSpacing / 2;
-        actorAreas.put(new Rectangle(x0-markRadius-3, y-markRadius-3,
+        actorProcAreas.put(new Rectangle(x0-markRadius-3, y-markRadius-3,
                 lastX[i]-x0+markDiameter+6, markDiameter+6),
             sortedActors.get(i));
       }
@@ -159,13 +162,12 @@ public class ProcessTimelinePanel extends TimelinePanel{
     int width = getWidth();
 
     Graphics2D g2d=(Graphics2D) g;
-    Stroke stroke=g2d.getStroke();
-    g2d.setStroke(new BasicStroke(2));
+    Stroke stroke=g2d.getStroke(), thickStroke=new BasicStroke(2);
+    g2d.setStroke(thickStroke);
 
     if (processAreas!=null)
       processAreas.clear();
-    ArrayList<Actor> sortedActors = new ArrayList<Actor>(gProc.actors.values());
-    sortedActors.sort(Comparator.comparing(a -> a.id));
+    List<Actor> sortedActors = gProc.getActorsSorted(gProc.actors.values());
 
     if (processAreas==null)
       processAreas=new HashMap<Rectangle,ProcessInstance>(gProc.processes.size());
@@ -179,6 +181,10 @@ public class ProcessTimelinePanel extends TimelinePanel{
       processActorAreas=new HashMap<String,Map<Rectangle,Actor>>(gProc.processes.size());
     else
       processActorAreas.clear();
+    if (actorAreas!=null)
+      actorAreas.clear();
+    else
+      actorAreas=new HashMap<Rectangle,Actor>(gProc.actors.size());
 
     List<ProcessInstance> sortedProcesses=gProc.getProcessesByEndTimeDescending();
 
@@ -193,38 +199,70 @@ public class ProcessTimelinePanel extends TimelinePanel{
       if (aProc.isEmpty())
         continue;
 
+      long secondsFromStart = ChronoUnit.SECONDS.between(minDate,actor.start);
+      long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,actor.end);
+      int aStart=(int) ((secondsFromStart * width) / (double) totalDuration);
+      int aEnd= (int) ((secondsFromStart2 * width) / (double) totalDuration);
+
+      Color actorColor = (actorRoleColors == null) ? null : actorRoleColors.get(actor.getMainRole());
+      if (actorColor == null)
+        actorColor = Color.gray;
+      g.setColor(new Color(actorColor.getRed(),actorColor.getGreen(),actorColor.getBlue(),32));
+      g.fillRect(aStart,y0-markRadius,aEnd-aStart,(aProc.size()-1)*actorLineSpacing+markDiameter);
+
+      int minX=-1000, maxX=-1000, y=y0;
       for (int pIdx=0; pIdx<aProc.size(); pIdx++) {
         ProcessInstance p=aProc.get(pIdx);
         TimeInterval pTime=p.getProcessLifetime();
 
-        long secondsFromStart = ChronoUnit.SECONDS.between(minDate,pTime.start);
-        long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,pTime.end);
+        secondsFromStart = ChronoUnit.SECONDS.between(minDate,pTime.start);
+        secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,pTime.end);
         int xStart = (int) ((secondsFromStart * width) / (double) totalDuration);
         int xEnd = (int) ((secondsFromStart2 * width) / (double) totalDuration);
+        if (minX<0 || minX>xStart)
+          minX=xStart;
+        if (maxX<xEnd)
+          maxX=xEnd;
 
-        Color actorColor = (actorRoleColors == null) ? null : actorRoleColors.get(actor.getMainRole());
-        if (actorColor == null)
-          actorColor = Color.gray;
-        g.setColor(actorColor);
-        g.drawLine(xStart,y0,xEnd,y0);
+        g.setColor(new Color(actorColor.getRed(),actorColor.getGreen(),actorColor.getBlue(),144));
+        g2d.setStroke(stroke);
+        g.drawLine(xStart,y,xEnd,y);
+        g2d.setStroke(thickStroke);
 
-        Map<Rectangle,Actor> actorAreas=processActorAreas.get(p.id);
-        if (actorAreas==null) {
-          actorAreas=new HashMap<Rectangle,Actor>(10);
-          processActorAreas.put(p.id,actorAreas);
+        LocalDateTime minTaskTime=pTime.end, maxTaskTime=pTime.start;
+        for (int sIdx=0; sIdx<p.states.size(); sIdx++) {
+          StateInstance s = p.states.get(sIdx);
+          for (int tIdx=0; tIdx<s.tasks.size(); tIdx++) {
+            TaskInstance t = s.tasks.get(tIdx);
+            if (!t.actorsInvolved.contains(actor) || t.actual == null || t.actual.start == null)
+              continue;
+            if (t.actual.start.isBefore(minTaskTime))
+              minTaskTime=t.actual.start;
+            if (t.actual.end.isAfter(maxTaskTime))
+              maxTaskTime=t.actual.end;
+          }
+          if (maxTaskTime.isAfter(minTaskTime)) {
+            secondsFromStart = ChronoUnit.SECONDS.between(minDate,minTaskTime);
+            secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,maxTaskTime);
+            int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
+            int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
+            g.setColor(actorColor);
+            g.drawLine(x1,y,x2,y);
+          }
         }
-        else
-          actorAreas.clear();
+
+        Map<Rectangle,Actor> actorProcAreas=processActorAreas.get(p.id);
+        if (actorProcAreas==null) {
+          actorProcAreas=new HashMap<Rectangle,Actor>(10);
+          processActorAreas.put(p.id,actorProcAreas);
+        }
 
         Map<Rectangle,TaskInstance> taskAreas=processTaskAreas.get(p.id);
         if (taskAreas==null) {
           taskAreas=new HashMap<Rectangle,TaskInstance>(100);
           processTaskAreas.put(p.id,taskAreas);
         }
-        else
-          taskAreas.clear();
 
-        int maxY=y0, maxX=-1000;
         for (int sIdx=0; sIdx<p.states.size(); sIdx++) {
           StateInstance s=p.states.get(sIdx);
           Color sColor=phaseColors.get(s.name);
@@ -243,18 +281,20 @@ public class ProcessTimelinePanel extends TimelinePanel{
             int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
 
             g.setColor(sColor);
-            g2d.drawOval(x1-markRadius,y0-markRadius,markDiameter+x2-x1,markDiameter);
-            g2d.fillOval(x1-markRadius,y0-markRadius,markDiameter+x2-x1,markDiameter);
-            taskAreas.put(new Rectangle(x1-markRadius-3,y0-markRadius-3,
+            g2d.drawOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
+            g2d.fillOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
+            taskAreas.put(new Rectangle(x1-markRadius-3,y-markRadius-3,
                 markDiameter+x2-x1+6,markDiameter+6),t);
           }
         }
-        actorAreas.put(new Rectangle(xStart-markRadius-3, y0-markRadius-3,
+        actorProcAreas.put(new Rectangle(xStart-markRadius-3, y-markRadius-3,
                 xEnd-xStart+markDiameter+6, markDiameter+6),actor);
 
-        y0+=actorLineSpacing;
+        y+=actorLineSpacing;
       }
-      y0+=actorLineSpacing*2;
+      actorAreas.put(new Rectangle(minX-markRadius-3,y0-markRadius-3,
+          maxX-minX+markDiameter+6,y-y0+markDiameter+6),actor);
+      y0=y+actorLineSpacing*2;
     }
     g2d.setStroke(stroke);
     int height=y0+2*actorLineSpacing;
@@ -266,56 +306,93 @@ public class ProcessTimelinePanel extends TimelinePanel{
   public String getToolTipText(Point pt) {
     if (pt==null)
       return null;
-    if (processAreas!=null)
+    if (mode==PROCESS_MODE) {
+      if (processAreas == null)
+        return super.getToolTipText(pt);
       for (Map.Entry<Rectangle, ProcessInstance> entry : processAreas.entrySet()) {
         if (entry.getKey().contains(pt)) {
           ProcessInstance p = entry.getValue();
           //check if the mouse points at a specific task
-          Map<Rectangle,TaskInstance> taskAreas=processTaskAreas.get(p.id);
-          if (taskAreas!=null)
-            for (Map.Entry<Rectangle,TaskInstance> taskEntry:taskAreas.entrySet())
-              if (taskEntry.getKey().contains(pt)) {
-                TaskInstance t=taskEntry.getValue();
-                String text = String.format("<html>Process ID: <b>%s</b><br>Process type: <b>%s</b>" +
-                        "<br>Task ID: <b>%s</b><br>Name: <b>%s</b><br>"+
-                    "Actual time: <b>%s -- %s</b>",p.id,p.type,
-                    t.id,t.name,t.actual.start.format(formatter),t.actual.end.format(formatter));
-                if (t.scheduled!=null)
-                  text+=String.format("<br>Scheduled time: <b>%s -- %s</b>",
-                      t.scheduled.start.format(formatter),t.scheduled.end.format(formatter));
-                Actor primaryActor = (t.actorsInvolved==null || t.actorsInvolved.isEmpty())?null:t.actorsInvolved.get(0);
-                if (primaryActor!=null) {
-                  text += String.format("<br>Primary actor: <b>%s</b> in role <b>%s</b>",
-                      primaryActor.id, primaryActor.getMainRole());
-                  if (t.actorsInvolved.size()>1)
-                    for (int i=1; i<t.actorsInvolved.size(); i++) {
-                      Actor a=t.actorsInvolved.get(i);
-                      text+=String.format("<br>Involved actor: <b>%s</b> in role <b>%s</b>",
-                          a.id, a.getMainRole());
-                    }
-                }
-                if (t.status!=null)
-                  text+="<br>Status: <b>"+t.status+"</b>";
-                if (t.outcome!=null)
-                  text+="<br>Outcome: <b>"+t.outcome+"</b>";
-                text+="</html>";
-                return text;
-              }
-          Map<Rectangle,Actor> actorAreas=processActorAreas.get(p.id);
-          if (actorAreas!=null)
-            for (Map.Entry<Rectangle,Actor> actorEntry:actorAreas.entrySet())
-              if (actorEntry.getKey().contains(pt)) {
-                Actor a=actorEntry.getValue();
-                String text=String.format("<html>Process ID: <b>%s</b><br>Process type: <b>%s</b>" +
-                    "<br>Involved actor: <b>%s</b> in role <b>%s</b></html>",p.id,p.type,a.id,a.getMainRole());
-                return text;
-              }
+          Map<Rectangle, TaskInstance> taskAreas = processTaskAreas.get(p.id);
+          if (taskAreas != null)
+            for (Map.Entry<Rectangle, TaskInstance> taskEntry : taskAreas.entrySet())
+              if (taskEntry.getKey().contains(pt))
+                return getTextForTask(p,taskEntry.getValue());
+          Map<Rectangle, Actor> actorProcAreas = processActorAreas.get(p.id);
+          if (actorProcAreas != null)
+            for (Map.Entry<Rectangle, Actor> actorEntry : actorProcAreas.entrySet())
+              if (actorEntry.getKey().contains(pt))
+                return getTextForActor(p,actorEntry.getValue());
 
           String text = String.format("<html>Process ID: <b>%s</b><br>Process type: <b>%s</b></html>",
-              p.id,p.type);
+              p.id, p.type);
           return text;
         }
       }
+    }
+    if (mode==ACTOR_MODE) {
+      if (actorAreas!=null)
+        if (actorAreas != null)
+          for (Map.Entry<Rectangle, Actor> actorEntry : actorAreas.entrySet())
+            if (actorEntry.getKey().contains(pt)) {
+              Actor actor=actorEntry.getValue();
+              if (processActorAreas!=null)
+                for (ProcessInstance p: gProc.processes) {
+                  Map<Rectangle, Actor> actorProcAreas = processActorAreas.get(p.id);
+                  if (actorProcAreas != null && actorProcAreas.containsValue(actor)) {
+                    //check if the mouse points at a specific task
+                    Map<Rectangle, TaskInstance> taskAreas = processTaskAreas.get(p.id);
+                    if (taskAreas != null)
+                      for (Map.Entry<Rectangle, TaskInstance> taskEntry : taskAreas.entrySet())
+                        if (taskEntry.getKey().contains(pt))
+                          return getTextForTask(p,taskEntry.getValue());
+                    for (Map.Entry<Rectangle, Actor> aE : actorProcAreas.entrySet())
+                      if (aE.getValue().equals(actor) && aE.getKey().contains(pt))
+                        return getTextForActor(p, actor);
+                  }
+                }
+              return getTextForActor(null, actorEntry.getValue());
+            }
+    }
     return super.getToolTipText(pt);
+  }
+
+  protected String getTextForTask(ProcessInstance p, TaskInstance t) {
+    if (t==null)
+      return null;
+    String text = String.format("<html>Process ID: <b>%s</b><br>Process type: <b>%s</b>" +
+            "<br>Task ID: <b>%s</b><br>Name: <b>%s</b><br>" +
+            "Actual time: <b>%s -- %s</b>", p.id, p.type,
+        t.id, t.name, t.actual.start.format(formatter), t.actual.end.format(formatter));
+    if (t.scheduled != null)
+      text += String.format("<br>Scheduled time: <b>%s -- %s</b>",
+          t.scheduled.start.format(formatter), t.scheduled.end.format(formatter));
+    Actor primaryActor = (t.actorsInvolved == null || t.actorsInvolved.isEmpty()) ? null : t.actorsInvolved.get(0);
+    if (primaryActor != null) {
+      text += String.format("<br>Primary actor: <b>%s</b> in role <b>%s</b>",
+          primaryActor.id, primaryActor.getMainRole());
+      if (t.actorsInvolved.size() > 1)
+        for (int i = 1; i < t.actorsInvolved.size(); i++) {
+          Actor a = t.actorsInvolved.get(i);
+          text += String.format("<br>Involved actor: <b>%s</b> in role <b>%s</b>",
+              a.id, a.getMainRole());
+        }
+    }
+    if (t.status != null)
+      text += "<br>Status: <b>" + t.status + "</b>";
+    if (t.outcome != null)
+      text += "<br>Outcome: <b>" + t.outcome + "</b>";
+    text += "</html>";
+    return text;
+  }
+
+  protected String getTextForActor(ProcessInstance p, Actor a) {
+    if (a==null)
+      return null;
+    if (p==null)
+      return String.format("<html>Actor ID: <b>%s</b><br>Main role: <b>%s</b></html>",
+          a.id, a.getMainRole());
+    return String.format("<html>Process ID: <b>%s</b><br>Process type: <b>%s</b>" +
+        "<br>Involved actor: <b>%s</b> in role <b>%s</b></html>", p.id, p.type, a.id, a.getMainRole());
   }
 }
