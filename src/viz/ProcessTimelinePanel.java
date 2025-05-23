@@ -27,7 +27,12 @@ public class ProcessTimelinePanel extends TimelinePanel{
     actorRoleColors=Utils.generateItemColors(gProc.actorRoles);
     setPreferredSize(new Dimension(1200, 100 + gProc.processes.size() * actorLineSpacing*10));
   }
-  
+
+  public void setMode(int mode) {
+    this.mode = mode;
+    repaint();
+  }
+
   protected void paintComponent(Graphics g) {
     super.paintComponent(g); // Draw background phases
     if (mode==PROCESS_MODE)

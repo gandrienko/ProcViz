@@ -10,6 +10,8 @@ import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.io.*;
@@ -181,8 +183,43 @@ public class Main {
 
         frame.add(processPanel, BorderLayout.CENTER);
 
+        JPanel modePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+
+        JLabel label = new JLabel("Grouping mode:");
+
+        JRadioButton processesButton = new JRadioButton("processes");
+        JRadioButton actorsButton = new JRadioButton("actors");
+
+        // Group them
+        ButtonGroup group = new ButtonGroup();
+        group.add(processesButton);
+        group.add(actorsButton);
+
+        // Set default
+        processesButton.setSelected(true);
+
+        // Add action listeners
+        processesButton.addActionListener(new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent e) {
+            if (processesButton.isSelected())
+              processMainPanel.setMode(ProcessTimelinePanel.PROCESS_MODE);
+          }
+        });
+        actorsButton.addActionListener(new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent e) {
+            if (actorsButton.isSelected())
+              processMainPanel.setMode(ProcessTimelinePanel.ACTOR_MODE);
+          }
+        });
+
+        modePanel.add(label);
+        modePanel.add(processesButton);
+        modePanel.add(actorsButton);
+
         JPanel controlPanel = new JPanel();
-        controlPanel.add(new JLabel("Interaction controls coming soon..."));
+        controlPanel.add(modePanel);
         frame.add(controlPanel, BorderLayout.SOUTH);
 
         frame.pack();
