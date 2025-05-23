@@ -17,7 +17,7 @@ public class LogLoader {
 
   private Map<String, Actor> actors = new HashMap<>();
   private Map<String, ActionType> actionTypes = new HashMap<>();
-  private List<String> actorRoles = new ArrayList<String>();
+  private List<String> actorRoles = null;
   private Map<String, Phase> phases = new LinkedHashMap<>();
 
   public static DateTimeFormatter dateFormatters[]= {
@@ -100,6 +100,9 @@ public class LogLoader {
   }
 
   public void loadActionToRolesMapping(String mappingFilePath) throws IOException {
+    actorRoles=readRolesIfExists(mappingFilePath);
+    if (actorRoles==null)
+      actorRoles = new ArrayList<String>();
     try (BufferedReader br = new BufferedReader(new FileReader(mappingFilePath))) {
       String line = br.readLine(); // skip header
       while ((line = br.readLine()) != null) {
@@ -130,6 +133,8 @@ public class LogLoader {
   }
 
   public static List<String> readRolesIfExists(String logFilePath) {
+    if (logFilePath==null)
+      return null;
     File logFile = new File(logFilePath);
     File parentDir = logFile.getParentFile();
 
@@ -160,8 +165,6 @@ public class LogLoader {
 
   public boolean loadLog(String logFilePath) {
     int nTaskInstances=0;
-
-    actorRoles=readRolesIfExists(logFilePath);
 
     try (BufferedReader br = new BufferedReader(new FileReader(logFilePath))) {
       String line; // header
