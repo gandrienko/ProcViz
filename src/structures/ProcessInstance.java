@@ -1,5 +1,6 @@
 package structures;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -40,5 +41,36 @@ public class ProcessInstance {
       if (a.id.equals(actor.id))
         return; //already there
     actors.add(actor);
+  }
+
+  public TimeInterval getProcessLifetime() {
+    LocalDateTime earliestStart = null;
+    LocalDateTime latestEnd = null;
+
+    for (StateInstance state : states) {
+      for (TaskInstance task : state.tasks) {
+        if (task.actual != null) {
+          LocalDateTime start = task.actual.start;
+          LocalDateTime end = task.actual.end;
+
+          if (start != null) {
+            if (earliestStart == null || start.isBefore(earliestStart)) {
+              earliestStart = start;
+            }
+          }
+
+          if (end != null) {
+            if (latestEnd == null || end.isAfter(latestEnd)) {
+              latestEnd = end;
+            }
+          }
+        }
+      }
+    }
+
+    if (earliestStart != null && latestEnd != null)
+      return new TimeInterval(earliestStart,latestEnd);
+
+    return null;
   }
 }

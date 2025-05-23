@@ -5,13 +5,14 @@ import structures.*;
 import java.awt.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.List;
 
 public class ProcessTimelinePanel extends TimelinePanel{
   public static int markRadius=4, markDiameter=markRadius*2, actorLineSpacing=8;
   public static int PROCESS_MODE=1, ACTOR_MODE=2;
   
   public GlobalProcess gProc=null;
-  public int mode=PROCESS_MODE;
+  public int mode=ACTOR_MODE;
   
   protected Map<Rectangle, ProcessInstance> processAreas = null;
   protected Map<String,Map<Rectangle,Actor>> processActorAreas=null;
@@ -45,8 +46,17 @@ public class ProcessTimelinePanel extends TimelinePanel{
       processAreas=new HashMap<Rectangle,ProcessInstance>(gProc.processes.size());
     else
       processAreas.clear();
+    if (processTaskAreas==null)
+      processTaskAreas=new HashMap<String,Map<Rectangle,TaskInstance>>(gProc.processes.size());
+    else
+      processTaskAreas.clear();
+    if (processActorAreas==null)
+      processActorAreas=new HashMap<String,Map<Rectangle,Actor>>(gProc.processes.size());
+    else
+      processActorAreas.clear();
 
-    int y0=yTop+actorLineSpacing+fontHeight;
+    int y0=yTop+2*actorLineSpacing;
+
     for (ProcessInstance p: gProc.processes) {
       ArrayList<Actor> sortedActors = new ArrayList<Actor>(p.actors);
       sortedActors.sort(Comparator.comparing(a -> a.id));
@@ -56,8 +66,6 @@ public class ProcessTimelinePanel extends TimelinePanel{
         actorLineOffset.put(sortedActors.get(i).id, i);
       }
 
-      if (processActorAreas==null)
-        processActorAreas=new HashMap<String,Map<Rectangle,Actor>>(gProc.processes.size());
       Map<Rectangle,Actor> actorAreas=processActorAreas.get(p.id);
       if (actorAreas==null) {
         actorAreas=new HashMap<Rectangle,Actor>(sortedActors.size());
@@ -66,8 +74,6 @@ public class ProcessTimelinePanel extends TimelinePanel{
       else
         actorAreas.clear();
 
-      if (processTaskAreas==null)
-        processTaskAreas=new HashMap<String,Map<Rectangle,TaskInstance>>(gProc.processes.size());
       Map<Rectangle,TaskInstance> taskAreas=processTaskAreas.get(p.id);
       if (taskAreas==null) {
         taskAreas=new HashMap<Rectangle,TaskInstance>(100);
@@ -143,6 +149,9 @@ public class ProcessTimelinePanel extends TimelinePanel{
       y0=maxY+actorLineSpacing*3;
     }
     g2d.setStroke(stroke);
+    int height=y0+2*actorLineSpacing;
+    setPreferredSize(new Dimension(getPreferredSize().width, height));
+    setSize(width,height);
   }
 
 
@@ -158,25 +167,50 @@ public class ProcessTimelinePanel extends TimelinePanel{
     ArrayList<Actor> sortedActors = new ArrayList<Actor>(gProc.actors.values());
     sortedActors.sort(Comparator.comparing(a -> a.id));
 
-    if (processActorAreas==null)
-      processActorAreas=new HashMap<String,Map<Rectangle,Actor>>(gProc.processes.size());
+    if (processAreas==null)
+      processAreas=new HashMap<Rectangle,ProcessInstance>(gProc.processes.size());
+    else
+      processAreas.clear();
     if (processTaskAreas==null)
       processTaskAreas=new HashMap<String,Map<Rectangle,TaskInstance>>(gProc.processes.size());
+    else
+      processTaskAreas.clear();
+    if (processActorAreas==null)
+      processActorAreas=new HashMap<String,Map<Rectangle,Actor>>(gProc.processes.size());
+    else
+      processActorAreas.clear();
 
-    int y0=yTop+actorLineSpacing+fontHeight;
-    for (int i=0; i<sortedActors.size(); i++) {
-      Actor actor=sortedActors.get(i);
-      HashSet<ProcessInstance> aProc=new HashSet<ProcessInstance>();
-      for (ProcessInstance p: gProc.processes)
-        if (p.actors.contains(actor))
-          aProc.add(p);
+    List<ProcessInstance> sortedProcesses=gProc.getProcessesByEndTimeDescending();
+
+    int y0=yTop+2*actorLineSpacing;
+
+    for (int aIdx=0; aIdx<sortedActors.size(); aIdx++) {
+      Actor actor=sortedActors.get(aIdx);
+      List<ProcessInstance> aProc=new ArrayList<ProcessInstance>(10);
+      for (int pIdx=0; pIdx<sortedProcesses.size(); pIdx++)
+        if (sortedProcesses.get(pIdx).actors.contains(actor))
+          aProc.add(sortedProcesses.get(pIdx));
       if (aProc.isEmpty())
         continue;
 
-      for (ProcessInstance p:aProc) {
+      for (int pIdx=0; pIdx<aProc.size(); pIdx++) {
+        ProcessInstance p=aProc.get(pIdx);
+        TimeInterval pTime=p.getProcessLifetime();
+
+        long secondsFromStart = ChronoUnit.SECONDS.between(minDate,pTime.start);
+        long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,pTime.end);
+        int xStart = (int) ((secondsFromStart * width) / (double) totalDuration);
+        int xEnd = (int) ((secondsFromStart2 * width) / (double) totalDuration);
+
+        Color actorColor = (actorRoleColors == null) ? null : actorRoleColors.get(actor.getMainRole());
+        if (actorColor == null)
+          actorColor = Color.gray;
+        g.setColor(actorColor);
+        g.drawLine(xStart,y0,xEnd,y0);
+
         Map<Rectangle,Actor> actorAreas=processActorAreas.get(p.id);
         if (actorAreas==null) {
-          actorAreas=new HashMap<Rectangle,Actor>(sortedActors.size());
+          actorAreas=new HashMap<Rectangle,Actor>(10);
           processActorAreas.put(p.id,actorAreas);
         }
         else
@@ -189,9 +223,43 @@ public class ProcessTimelinePanel extends TimelinePanel{
         }
         else
           taskAreas.clear();
+
+        int maxY=y0, maxX=-1000;
+        for (int sIdx=0; sIdx<p.states.size(); sIdx++) {
+          StateInstance s=p.states.get(sIdx);
+          Color sColor=phaseColors.get(s.name);
+          if (sColor==null)
+            sColor=Color.gray;
+          sColor=Utils.toSaturated(sColor);
+
+          for (int tIdx=0; tIdx<s.tasks.size(); tIdx++) {
+            TaskInstance t=s.tasks.get(tIdx);
+            if (!t.actorsInvolved.contains(actor) || t.actual==null || t.actual.start==null)
+              continue;
+
+            secondsFromStart = ChronoUnit.SECONDS.between(minDate,t.actual.start);
+            secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,t.actual.end);
+            int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
+            int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
+
+            g.setColor(sColor);
+            g2d.drawOval(x1-markRadius,y0-markRadius,markDiameter+x2-x1,markDiameter);
+            g2d.fillOval(x1-markRadius,y0-markRadius,markDiameter+x2-x1,markDiameter);
+            taskAreas.put(new Rectangle(x1-markRadius-3,y0-markRadius-3,
+                markDiameter+x2-x1+6,markDiameter+6),t);
+          }
+        }
+        actorAreas.put(new Rectangle(xStart-markRadius-3, y0-markRadius-3,
+                xEnd-xStart+markDiameter+6, markDiameter+6),actor);
+
+        y0+=actorLineSpacing;
       }
+      y0+=actorLineSpacing*2;
     }
     g2d.setStroke(stroke);
+    int height=y0+2*actorLineSpacing;
+    setPreferredSize(new Dimension(getPreferredSize().width, height));
+    setSize(width,height);
   }
 
   

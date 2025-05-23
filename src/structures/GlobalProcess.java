@@ -1,5 +1,6 @@
 package structures;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -39,5 +40,22 @@ public class GlobalProcess {
         phaseList.add(phase);
     }
     return phaseList;
+  }
+
+  public List<ProcessInstance> getProcessesByEndTimeDescending() {
+    List<ProcessInstance> sortedList = new ArrayList<>(processes);
+
+    sortedList.sort((p1, p2) -> {
+      LocalDateTime end1 = (p1.getProcessLifetime() != null) ? p1.getProcessLifetime().end : null;
+      LocalDateTime end2 = (p2.getProcessLifetime() != null) ? p2.getProcessLifetime().end : null;
+
+      if (end1 == null && end2 == null) return 0;
+      if (end1 == null) return 1;  // nulls last
+      if (end2 == null) return -1; // nulls last
+
+      return end2.compareTo(end1); // descending order
+    });
+
+    return sortedList;
   }
 }
