@@ -17,14 +17,23 @@ import java.awt.event.ComponentEvent;
 import java.io.*;
 import java.util.*;
 
+import static data.LogLoader.transformCsv;
+
 public class Main {
 
     public static void main(String[] args) {
+      /*
+      transformAssignmentActionText(
+          "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\c25f_submission_logs.csv",
+          "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\c25f_log_transformed.csv");
+      */
+
       LogLoader loader = new LogLoader();
       /**/
       String phasesFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\Timeline25.csv";
       String actionsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\actions2phases.csv";
       String actorsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\actions2roles.csv";
+      //String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\new\\c25f_log_transformed.csv";
       String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\conf25log.csv";
       /**/
       /*
@@ -227,4 +236,9 @@ public class Main {
         frame.setVisible(true);
       }
     }
+
+  public static void transformAssignmentActionText(String inputPath,String outputPath) {
+    transformCsv(inputPath, outputPath);
+    System.out.println("CSV transformation complete.");
+  }
 }

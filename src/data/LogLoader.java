@@ -2,15 +2,13 @@ package data;
 
 import structures.*;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.regex.*;
 
 public class LogLoader {
   private Map<String, ProcessInstance> processes = new HashMap<>();
@@ -50,6 +48,32 @@ public class LogLoader {
       } catch (Exception ex) {}
     return null;
   }
+
+  // Regex pattern: matches "assigns <id> as <role>,"
+  private static final Pattern ASSIGN_PATTERN = Pattern.compile(
+      "\\bassigns\\s+([a-fA-F0-9]+)\\s+as\\s+(external|secondary|primary),"
+  );
+
+
+  public static void transformCsv(String inputFilePath, String outputFilePath) {
+    try (
+        BufferedReader reader = new BufferedReader(new FileReader(inputFilePath));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath))
+    ) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        // Replace all matching patterns
+        String updatedLine = ASSIGN_PATTERN.matcher(line).replaceAll(
+            "assigns as $2,$1"
+        );
+        writer.write(updatedLine);
+        writer.newLine();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
 
   public boolean loadPhaseTimetable(String phaseFilePath) {
     try (BufferedReader br = new BufferedReader(new FileReader(phaseFilePath))) {
