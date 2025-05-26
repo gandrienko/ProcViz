@@ -127,6 +127,8 @@ public class LogLoader {
     actorRoles=readRolesIfExists(mappingFilePath);
     if (actorRoles==null)
       actorRoles = new ArrayList<String>();
+    else
+      Actor.rolePriorities=actorRoles;
     try (BufferedReader br = new BufferedReader(new FileReader(mappingFilePath))) {
       String line = br.readLine(); // skip header
       while ((line = br.readLine()) != null) {
@@ -212,11 +214,17 @@ public class LogLoader {
             if (s.contains("date") || s.contains("time"))
               if (dateCN<0) dateCN=i; else;
             else
-            if (s.contains("action") || s.contains("event"))
+            if (s.contains("param"))
+              if (paramCN<0) paramCN=i; else;
+            else
+            if (s.contains("action") || s.contains("event")) {
               if (!s.contains("id"))
-                if (actionTypeCN<0) actionTypeCN=i; else;
+                if (actionTypeCN<0) actionTypeCN=i;
+                else ;
               else
-                if (actionIdCN<0) actionIdCN=i; else;
+                if (actionIdCN<0) actionIdCN=i;
+                else ;
+            }
             else
             if (s.contains("actor") || s.contains("person") || s.contains("anonymous") ||
                 s.contains("initiator") || s.contains("initiating")) {
@@ -241,10 +249,7 @@ public class LogLoader {
             else
             if (s.contains("outcome"))
               if (outcomeCN<0) outcomeCN=i; else;
-            else
-            if (s.contains("param"))
-              if (paramCN<0) paramCN=i; else;
-          }
+         }
           if (processIdCN<0) {
             System.out.println("No field with the process identifiers detected!");
             return false;

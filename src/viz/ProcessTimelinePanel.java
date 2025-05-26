@@ -20,11 +20,14 @@ public class ProcessTimelinePanel extends TimelinePanel{
   protected Map<Rectangle,Actor> actorAreas=null;
   protected Map<String,Map<Rectangle,TaskInstance>> processTaskAreas=null;
   protected Map<String, Color> actorRoleColors=null;
+  protected Map<String, Color> actionTypeColors=null;
   
   public ProcessTimelinePanel(GlobalProcess gProc) {
     super(gProc.getListOfPhases());
     this.gProc=gProc;
     actorRoleColors=Utils.generateItemColors(gProc.actorRoles);
+    ArrayList<String> actionTypes=new ArrayList<String>(gProc.actionTypes.keySet());
+    actionTypeColors=Utils.generateItemColors(actionTypes);
     setPreferredSize(new Dimension(1200, 100 + gProc.processes.size() * actorLineSpacing*10));
   }
 
@@ -133,9 +136,10 @@ public class ProcessTimelinePanel extends TimelinePanel{
                 g.setColor(roleColor);
               g.drawLine(lastX[offsetIndex], y, x1, y);
             }
+            //g.setColor(actionTypeColors.get(t.name));
             g.setColor(sColor);
-            g2d.drawOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
             g2d.fillOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
+            g2d.drawOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
             if (offsetIndex!=null)
               lastX[offsetIndex]=x2;
             if (maxX<x2) maxX=x2;

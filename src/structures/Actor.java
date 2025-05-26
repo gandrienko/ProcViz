@@ -2,6 +2,7 @@ package structures;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -9,6 +10,8 @@ import java.util.Map;
  */
 
 public class Actor implements Comparable<Actor>{
+  public static List<String> rolePriorities=null;
+  
   public String id;
   public Map<String,Integer> roles=null;
   public LocalDateTime start;
@@ -33,6 +36,10 @@ public class Actor implements Comparable<Actor>{
   public String getMainRole() {
     if (roles==null || roles.isEmpty())
       return null;
+    if (rolePriorities!=null)
+      for (int i=0; i<rolePriorities.size(); i++)
+        if (roles.containsKey(rolePriorities.get(i)))
+          return rolePriorities.get(i);
     String mainRole=null;
     int maxCount=0;
     for (Map.Entry<String,Integer> e:roles.entrySet())
