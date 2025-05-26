@@ -33,8 +33,8 @@ public class Main {
       String phasesFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\Timeline25.csv";
       String actionsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\actions2phases.csv";
       String actorsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\actions2roles.csv";
-      //String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\new\\c25f_log_transformed.csv";
-      String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\conf25log.csv";
+      String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\new\\c25f_log_transformed.csv";
+      //String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\conf25log.csv";
       /**/
       /*
       String phasesFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\synthetic\\Timeline25.csv";

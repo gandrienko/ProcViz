@@ -269,7 +269,15 @@ public class LogLoader {
           }
         }
 
-        LocalDateTime timestamp = LocalDateTime.parse(fields[dateCN].trim(), dateTimeFormatter);
+        String timeStr=fields[dateCN].trim();
+        if (timeStr.contains("T"))
+          timeStr=timeStr.replace('T',' ');
+        LocalDateTime timestamp = null;
+        try {
+          timestamp=LocalDateTime.parse(timeStr, dateTimeFormatter);
+        } catch (Exception ex) {}
+        if (timestamp==null)
+          continue;
         String actorId = (actorIdCN>=0)?fields[actorIdCN].trim():"none";
         String action = fields[actionTypeCN].trim();
         String param=(paramCN>=0 && paramCN<fields.length)?fields[paramCN].trim():"";
