@@ -72,6 +72,7 @@ public class LogAnonymizer {
         writer.write(String.join(",", newSubId, parts[1], newActorId, parts[3], newParam));
         writer.newLine();
       }
+      writer.close();
 
     } catch (IOException e) {
       System.err.println("Error processing file: " + e.getMessage());
@@ -85,6 +86,7 @@ public class LogAnonymizer {
         subWriter.write(entry.getKey() + "," + entry.getValue());
         subWriter.newLine();
       }
+      subWriter.close();
     } catch (IOException e) {
       System.err.println("Error writing submission ID map: " + e.getMessage());
     }
@@ -97,6 +99,7 @@ public class LogAnonymizer {
         actorWriter.write(entry.getKey() + "," + entry.getValue());
         actorWriter.newLine();
       }
+      actorWriter.close();
     } catch (IOException e) {
       System.err.println("Error writing actor ID map: " + e.getMessage());
     }
