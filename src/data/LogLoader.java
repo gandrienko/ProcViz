@@ -189,6 +189,34 @@ public class LogLoader {
     return null;
   }
 
+  public void loadActionEncodings(String encodingFilePath) {
+    if (encodingFilePath==null)
+      return;
+    try (BufferedReader reader = new BufferedReader(new FileReader(encodingFilePath))) {
+      String line = reader.readLine(); // skip header
+
+      while ((line = reader.readLine()) != null) {
+        String[] parts = line.split(",", 2);
+        if (parts.length < 2) continue;
+
+        String typeName = parts[0].trim();
+        String code = parts[1].trim();
+
+        if (typeName.isEmpty() || code.isEmpty()) continue;
+
+        // Get or create ActionType
+        ActionType action = actionTypes.getOrDefault(typeName, new ActionType());
+        action.typeName = typeName;
+        action.code = code;
+
+        actionTypes.put(typeName, action); // store or update
+      }
+
+    } catch (IOException e) {
+      System.err.println("Error reading action encoding file: " + e.getMessage());
+    }
+  }
+
   public boolean loadLog(String logFilePath) {
     int nTaskInstances=0;
 
@@ -351,7 +379,7 @@ public class LogLoader {
         TaskInstance task = new TaskInstance();
         //task.id = UUID.randomUUID().toString();
         task.id=(actionIdCN>=0)?fields[actionIdCN].trim():String.format("task%04d",++nTaskInstances);
-        task.name = action;
+        task.actionType = action;
         task.actorsInvolved = new ArrayList<Actor>(1);
         task.actorsInvolved.add(actor);
         task.actual = new TimeInterval(timestamp, timestamp);

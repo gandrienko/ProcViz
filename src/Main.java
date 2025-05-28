@@ -22,33 +22,66 @@ import static data.LogLoader.transformCsv;
 public class Main {
 
     public static void main(String[] args) {
-      /*
-      transformAssignmentActionText(
-          "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\c25f_submission_logs.csv",
-          "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\c25f_log_transformed.csv");
-      */
+
+      String configFile = (args.length > 0) ? args[0] : "paths.txt";
+      String phasesFilePath = null;
+      String actionsMappingFilePath = null;
+      String actionsEncodingFilePath = null;
+      String actorsMappingFilePath = null;
+      String logFilePath = null;
+
+      try (BufferedReader reader = new BufferedReader(new FileReader(configFile))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          line = line.trim();
+          if (line.isEmpty() || line.startsWith("#")) continue; // skip empty or comment lines
+
+          String[] parts = line.split("=", 2);
+          if (parts.length < 2) continue;
+
+          String key = parts[0].trim();
+          String value = parts[1].trim().replaceAll("^\"|\"$", ""); // remove surrounding quotes
+
+          switch (key) {
+            case "phasesFilePath":
+              phasesFilePath = value;
+              break;
+            case "actionsMappingFilePath":
+              actionsMappingFilePath = value;
+              break;
+            case "actionsEncodingFilePath":
+              actionsEncodingFilePath = value;
+              break;
+            case "actorsMappingFilePath":
+              actorsMappingFilePath = value;
+              break;
+            case "logFilePath":
+              logFilePath = value;
+              break;
+            default:
+              System.out.println("Unknown key: " + key);
+          }
+        }
+      } catch (IOException e) {
+        System.err.println("Error reading configuration file: " + e.getMessage());
+        return;
+      }
+
+      // Print to verify values (or use them as needed)
+      System.out.println("phasesFilePath = " + phasesFilePath);
+      System.out.println("actionsMappingFilePath = " + actionsMappingFilePath);
+      System.out.println("actionsEncodingFilePath = " + actionsEncodingFilePath);
+      System.out.println("actorsMappingFilePath = " + actorsMappingFilePath);
+      System.out.println("logFilePath = " + logFilePath);
 
       LogLoader loader = new LogLoader();
-      /**/
-      String phasesFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\Timeline25.csv";
-      String actionsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\actions2phases.csv";
-      String actorsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\actions2roles.csv";
-      String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\new\\c25f_log_transformed.csv";
-      //String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\conf25log.csv";
-      /**/
-      /*
-      String phasesFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\synthetic\\Timeline25.csv";
-      String actionsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\synthetic\\actions2phases.csv";
-      String actorsMappingFilePath="c:\\CommonGISprojects\\events\\ProcessMining-Conf\\synthetic\\actions2roles.csv";
-      String logFilePath = "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\synthetic\\object_centric_log.csv";
-      /**/
-
       GlobalProcess gProc=new GlobalProcess();
 
       try {
         loader.loadPhaseTimetable(phasesFilePath);
         loader.loadActionPhaseMapping(actionsMappingFilePath);
         loader.loadActionToRolesMapping(actorsMappingFilePath);
+        loader.loadActionEncodings(actionsEncodingFilePath);
         loader.loadLog(logFilePath);
 
         gProc.actionTypes=loader.getActionTypes();
@@ -192,20 +225,27 @@ public class Main {
 
         frame.add(processPanel, BorderLayout.CENTER);
 
+        JPanel controlPanel = new JPanel();
+        controlPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 30,0));
+        frame.add(controlPanel, BorderLayout.SOUTH);
+
         JPanel modePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-
-        JLabel label = new JLabel("Grouping mode:");
-
         JRadioButton processesButton = new JRadioButton("processes");
         JRadioButton actorsButton = new JRadioButton("actors");
-
         // Group them
         ButtonGroup group = new ButtonGroup();
         group.add(processesButton);
         group.add(actorsButton);
-
         // Set default
-        processesButton.setSelected(true);
+        if (processMainPanel.getMode()==ProcessTimelinePanel.PROCESS_MODE)
+          processesButton.setSelected(true);
+        else
+          actorsButton.setSelected(true);
+
+        modePanel.add(new JLabel("Grouping mode:"));
+        modePanel.add(processesButton);
+        modePanel.add(actorsButton);
+        controlPanel.add(modePanel);
 
         // Add action listeners
         processesButton.addActionListener(new ActionListener() {
@@ -223,19 +263,51 @@ public class Main {
           }
         });
 
-        modePanel.add(label);
-        modePanel.add(processesButton);
-        modePanel.add(actorsButton);
+        modePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JRadioButton dotsButton = new JRadioButton("dots");
+        JRadioButton charsButton = new JRadioButton("characters");
+        // Group them
+        group = new ButtonGroup();
+        group.add(dotsButton);
+        group.add(charsButton);
+        // Set default
+        if (processMainPanel.getSymbolMode()==ProcessTimelinePanel.SYMBOL_DOT)
+          dotsButton.setSelected(true);
+        else
+          charsButton.setSelected(true);
 
-        JPanel controlPanel = new JPanel();
+        modePanel.add(new JLabel("Symbols for actions:"));
+        modePanel.add(dotsButton);
+        modePanel.add(charsButton);
         controlPanel.add(modePanel);
-        frame.add(controlPanel, BorderLayout.SOUTH);
+
+        // Add action listeners
+        dotsButton.addActionListener(new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent e) {
+            if (dotsButton.isSelected())
+              processMainPanel.setSymbolMode(ProcessTimelinePanel.SYMBOL_DOT);
+          }
+        });
+        charsButton.addActionListener(new ActionListener() {
+          @Override
+          public void actionPerformed(ActionEvent e) {
+            if (charsButton.isSelected())
+              processMainPanel.setSymbolMode(ProcessTimelinePanel.SYMBOL_CHAR);
+          }
+        });
 
         frame.pack();
         frame.setSize(frame.getWidth(), 850);
         frame.setVisible(true);
       }
     }
+
+  public static void transformAssignmentActionText() {
+    transformAssignmentActionText(
+        "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\c25f_submission_logs.csv",
+        "c:\\CommonGISprojects\\events\\ProcessMining-Conf\\c25f_log_transformed.csv");
+  }
 
   public static void transformAssignmentActionText(String inputPath,String outputPath) {
     transformCsv(inputPath, outputPath);

@@ -6,4 +6,5 @@ public class ActionType {
   public String actorRole=null; //e.g. "PC Member", "External Reviewer", "PC Member"
   public String targetType=null; //e.g. ""Actor", "Status", "Outcome"
   public String targetRole=null; //in case of targetType="Actor" it is the role of the target actor
+  public String code=null;
 }

@@ -9,7 +9,7 @@ import java.util.List;
 
 public class TaskInstance {
   public String id;
-  public String name;
+  public String actionType;
   public List<Actor> actorsInvolved = new ArrayList<>();;
   public String status=null;
   public String outcome=null;

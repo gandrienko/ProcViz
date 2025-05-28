@@ -11,9 +11,11 @@ import java.util.List;
 public class ProcessTimelinePanel extends TimelinePanel{
   public static int markRadius=4, markDiameter=markRadius*2, actorLineSpacing=8;
   public static int PROCESS_MODE=1, ACTOR_MODE=2;
+  public static int SYMBOL_DOT=0, SYMBOL_CHAR=1;
   
   public GlobalProcess gProc=null;
   public int mode=PROCESS_MODE;
+  public int symbolMode=SYMBOL_CHAR;
   
   protected Map<Rectangle, ProcessInstance> processAreas = null;
   protected Map<String,Map<Rectangle,Actor>> processActorAreas=null;
@@ -36,6 +38,19 @@ public class ProcessTimelinePanel extends TimelinePanel{
     repaint();
   }
 
+  public int getMode() {
+    return mode;
+  }
+
+  public int getSymbolMode() {
+    return symbolMode;
+  }
+
+  public void setSymbolMode(int symbolMode) {
+    this.symbolMode = symbolMode;
+    repaint();
+  }
+
   protected void paintComponent(Graphics g) {
     super.paintComponent(g); // Draw background phases
     if (mode==PROCESS_MODE)
@@ -51,6 +66,16 @@ public class ProcessTimelinePanel extends TimelinePanel{
     Graphics2D g2d=(Graphics2D) g;
     Stroke stroke=g2d.getStroke();
     g2d.setStroke(new BasicStroke(2));
+    Font font=g2d.getFont();
+    if (symbolMode==SYMBOL_CHAR) {
+      // Set font: Bold Italic, size 11
+      Font thickFont = new Font("SansSerif", Font.BOLD | Font.ITALIC, 11);
+      g2d.setFont(thickFont);
+      // Set rendering hints for better quality
+      g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+          RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+    }
+    FontMetrics fm = g2d.getFontMetrics();
 
     if (processAreas==null)
       processAreas=new HashMap<Rectangle,ProcessInstance>(gProc.processes.size());
@@ -136,10 +161,17 @@ public class ProcessTimelinePanel extends TimelinePanel{
                 g.setColor(roleColor);
               g.drawLine(lastX[offsetIndex], y, x1, y);
             }
-            //g.setColor(actionTypeColors.get(t.name));
+            //g.setColor(actionTypeColors.get(t.actionType));
             g.setColor(sColor);
-            g2d.fillOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
-            g2d.drawOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
+            ActionType aType=gProc.actionTypes.get(t.actionType);
+            if (symbolMode==SYMBOL_CHAR && aType!=null && aType.code!=null && aType.code.length()>0) {
+              int dx = fm.stringWidth(aType.code) / 2;
+              g2d.drawString(aType.code,x1-dx,y+fm.getHeight()/2-fm.getDescent());
+            }
+            else {
+              g2d.fillOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
+              g2d.drawOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
+            }
             if (offsetIndex!=null)
               lastX[offsetIndex]=x2;
             if (maxX<x2) maxX=x2;
@@ -161,6 +193,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
       y0=maxY+actorLineSpacing*3;
     }
     g2d.setStroke(stroke);
+    g2d.setFont(font);
     int height=y0+2*actorLineSpacing;
     setPreferredSize(new Dimension(getPreferredSize().width, height));
     setSize(width,height);
@@ -173,6 +206,16 @@ public class ProcessTimelinePanel extends TimelinePanel{
     Graphics2D g2d=(Graphics2D) g;
     Stroke stroke=g2d.getStroke(), thickStroke=new BasicStroke(2);
     g2d.setStroke(thickStroke);
+    Font font=g2d.getFont();
+    if (symbolMode==SYMBOL_CHAR) {
+      // Set font: Bold Italic, size 11
+      Font thickFont = new Font("SansSerif", Font.BOLD | Font.ITALIC, 11);
+      g2d.setFont(thickFont);
+      // Set rendering hints for better quality
+      g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+          RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+    }
+    FontMetrics fm = g2d.getFontMetrics();
 
     if (processAreas!=null)
       processAreas.clear();
@@ -290,8 +333,15 @@ public class ProcessTimelinePanel extends TimelinePanel{
             int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
 
             g.setColor(sColor);
-            g2d.drawOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
-            g2d.fillOval(x1-markRadius,y-markRadius,markDiameter+x2-x1,markDiameter);
+            ActionType aType=gProc.actionTypes.get(t.actionType);
+            if (symbolMode==SYMBOL_CHAR && aType!=null && aType.code!=null && aType.code.length()>0) {
+              int dx = fm.stringWidth(aType.code) / 2;
+              g2d.drawString(aType.code,x1-dx,y+fm.getHeight()/2-fm.getDescent());
+            }
+            else {
+              g2d.fillOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
+              g2d.drawOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
+            }
             taskAreas.put(new Rectangle(x1-markRadius-3,y-markRadius-3,
                 markDiameter+x2-x1+6,markDiameter+6),t);
           }
@@ -306,6 +356,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
       y0=y+actorLineSpacing*2;
     }
     g2d.setStroke(stroke);
+    g2d.setFont(font);
     int height=y0+2*actorLineSpacing;
     setPreferredSize(new Dimension(getPreferredSize().width, height));
     setSize(width,height);
@@ -372,7 +423,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
     String text = String.format("<html>Process ID: <b>%s</b><br>Process type: <b>%s</b>" +
             "<br>Task ID: <b>%s</b><br>Name: <b>%s</b><br>" +
             "Actual time: <b>%s -- %s</b>", p.id, p.type,
-        t.id, t.name, t.actual.start.format(formatter), t.actual.end.format(formatter));
+        t.id, t.actionType, t.actual.start.format(formatter), t.actual.end.format(formatter));
     if (t.scheduled != null)
       text += String.format("<br>Scheduled time: <b>%s -- %s</b>",
           t.scheduled.start.format(formatter), t.scheduled.end.format(formatter));
