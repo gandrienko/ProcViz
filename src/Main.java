@@ -2,6 +2,7 @@ import data.LogLoader;
 import structures.ActionType;
 import structures.Actor;
 import structures.GlobalProcess;
+import viz.ActionOverviewPanel;
 import viz.ProcessTimelinePanel;
 import viz.TimelinePanel;
 import viz.TimelineTextsPanel;
@@ -300,6 +301,17 @@ public class Main {
         frame.pack();
         frame.setSize(frame.getWidth(), 850);
         frame.setVisible(true);
+
+        ActionOverviewPanel overviewPanel = new ActionOverviewPanel(gProc);
+        JScrollPane scrollPaneActions = new JScrollPane(overviewPanel);
+        scrollPaneActions.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        scrollPaneActions.getVerticalScrollBar().setUnitIncrement(16);
+
+// Example: Add to a side panel or new Frame
+        JFrame overviewFrame = new JFrame("Actions Overview");
+        overviewFrame.add(scrollPaneActions);
+        overviewFrame.setSize(1000, 600);
+        overviewFrame.setVisible(true);
       }
     }
 

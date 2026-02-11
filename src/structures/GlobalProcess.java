@@ -1,5 +1,6 @@
 package structures;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -14,6 +15,10 @@ public class GlobalProcess {
   public Map<String, Actor> actors;  //key: actor id
 
   public Collection<ProcessInstance> processes;
+
+  public Collection<ProcessInstance> getProcesses() {
+    return processes;
+  }
 
   public Set<Actor> getActorsByRole(String role) {
     Set<Actor> result = new HashSet<>();
@@ -80,5 +85,20 @@ public class GlobalProcess {
     });
 
     return sortedList;
+  }
+
+  // Add this helper method to your GlobalProcess or a DataUtils class
+  public Map<String, Map<LocalDate, Integer>> getActionCountsByDay() {
+    Map<String, Map<LocalDate, Integer>> counts = new TreeMap<>();
+    for (ProcessInstance p : getProcesses()) {
+      for (StateInstance s : p.states) {
+        for (TaskInstance t : s.tasks) {
+          LocalDate date = t.actual.start.toLocalDate();
+          counts.computeIfAbsent(t.actionType, k -> new TreeMap<>())
+              .merge(date, 1, Integer::sum);
+        }
+      }
+    }
+    return counts;
   }
 }
