@@ -87,7 +87,6 @@ public class GlobalProcess {
     return sortedList;
   }
 
-  // Add this helper method to your GlobalProcess or a DataUtils class
   public Map<String, Map<LocalDate, Integer>> getActionCountsByDay() {
     Map<String, Map<LocalDate, Integer>> counts = new TreeMap<>();
     for (ProcessInstance p : getProcesses()) {
@@ -101,4 +100,18 @@ public class GlobalProcess {
     }
     return counts;
   }
-}
+
+  public Map<String, Map<LocalDate, List<TaskInstance>>> getTasksByActionAndDay() {
+    Map<String, Map<LocalDate, List<TaskInstance>>> tasksMap = new TreeMap<>();
+    for (ProcessInstance p : processes) {
+      for (StateInstance s : p.states) {
+        for (TaskInstance t : s.tasks) {
+          LocalDate date = t.actual.start.toLocalDate();
+          tasksMap.computeIfAbsent(t.actionType, k -> new TreeMap<>())
+              .computeIfAbsent(date, k -> new ArrayList<>())
+              .add(t);
+        }
+      }
+    }
+    return tasksMap;
+  }}

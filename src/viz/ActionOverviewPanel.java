@@ -1,6 +1,8 @@
 package viz;
 
 import structures.GlobalProcess;
+import structures.TaskInstance;
+
 import javax.swing.*;
 import java.awt.*;
 import java.time.LocalDate;
@@ -13,7 +15,7 @@ public class ActionOverviewPanel extends JPanel {
   private int mode = 1; // 1: common, 2: individual, 3: common visible
   private JPanel contentPanel; // The panel inside the scroll pane
 
-  public ActionOverviewPanel(GlobalProcess gProc) {
+  public ActionOverviewPanel(GlobalProcess gProc, SelectionManager selectionManager) {
     // Use BorderLayout to separate ScrollPane from ControlPanel
     setLayout(new BorderLayout());
 
@@ -45,9 +47,13 @@ public class ActionOverviewPanel extends JPanel {
     contentPanel = new JPanel();
     contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
 
+    Map<String, Map<LocalDate, List<TaskInstance>>> allTasksByDays=gProc.getTasksByActionAndDay();
+
     for (ActionPeakInfo info : sortedActions) {
+      Map<LocalDate, List<TaskInstance>> tasksByDays =
+          allTasksByDays.getOrDefault(info.actionName, Collections.emptyMap());
       ActionHistogramPanel hist = new ActionHistogramPanel(
-          gProc.getListOfPhases(), data.get(info.actionName), globalMax);
+          gProc.getListOfPhases(), data.get(info.actionName), globalMax,tasksByDays,selectionManager);
 
       // Callback now includes a call to updateLayout to remove empty space
       CollapsibleActionSection section = new CollapsibleActionSection(info.actionName, hist, () -> {

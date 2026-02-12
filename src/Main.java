@@ -2,10 +2,7 @@ import data.LogLoader;
 import structures.ActionType;
 import structures.Actor;
 import structures.GlobalProcess;
-import viz.ActionOverviewPanel;
-import viz.ProcessTimelinePanel;
-import viz.TimelinePanel;
-import viz.TimelineTextsPanel;
+import viz.*;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
@@ -129,7 +126,8 @@ public class Main {
         System.err.println("Error reading the log file: " + e.getMessage());
       }
       if (gProc.phases!=null && !gProc.phases.isEmpty()) {
-        ProcessTimelinePanel processMainPanel = new ProcessTimelinePanel(gProc);
+        ProcessTimelinePanel processMainPanel = new ProcessTimelinePanel(gProc,new SelectionManager());
+
         int origPrefWidth=processMainPanel.getPreferredSize().width;
 
         JFrame frame = new JFrame("Process Timeline");
@@ -302,7 +300,7 @@ public class Main {
         frame.setSize(frame.getWidth(), 850);
         frame.setVisible(true);
 
-        ActionOverviewPanel overviewPanel = new ActionOverviewPanel(gProc);
+        ActionOverviewPanel overviewPanel = new ActionOverviewPanel(gProc, processMainPanel.getSelectionManager());
         /*
         JScrollPane scrollPaneActions = new JScrollPane(overviewPanel);
         scrollPaneActions.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);

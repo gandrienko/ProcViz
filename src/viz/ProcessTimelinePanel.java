@@ -14,6 +14,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
   public static int SYMBOL_DOT=0, SYMBOL_CHAR=1;
   
   public GlobalProcess gProc=null;
+  private SelectionManager selectionManager=null;
   public int mode=PROCESS_MODE;
   public int symbolMode=SYMBOL_CHAR;
   
@@ -24,13 +25,22 @@ public class ProcessTimelinePanel extends TimelinePanel{
   protected Map<String, Color> actorRoleColors=null;
   protected Map<String, Color> actionTypeColors=null;
   
-  public ProcessTimelinePanel(GlobalProcess gProc) {
+  public ProcessTimelinePanel(GlobalProcess gProc, SelectionManager selectionManager) {
     super(gProc.getListOfPhases());
     this.gProc=gProc;
+    this.selectionManager=selectionManager;
     actorRoleColors=Utils.generateItemColors(gProc.actorRoles);
     ArrayList<String> actionTypes=new ArrayList<String>(gProc.actionTypes.keySet());
     actionTypeColors=Utils.generateItemColors(actionTypes);
     setPreferredSize(new Dimension(1200, 100 + gProc.processes.size() * actorLineSpacing*10));
+    if (selectionManager!=null)
+      selectionManager.addListener(() -> {
+        repaint();
+      });
+  }
+
+  public SelectionManager getSelectionManager() {
+    return selectionManager;
   }
 
   public void setMode(int mode) {
@@ -98,8 +108,20 @@ public class ProcessTimelinePanel extends TimelinePanel{
       List<Actor> sortedActors = gProc.getActorsSorted(p.actors);
 
       Map<String, Integer> actorLineOffset = new HashMap<>();
+      ArrayList<Actor> actorHighlighted = (selectionManager==null || !selectionManager.hasSelection())?null :
+          new ArrayList<Actor>(sortedActors.size());
       for (int i = 0; i < sortedActors.size(); i++) {
-        actorLineOffset.put(sortedActors.get(i).id, i);
+        Actor actor=sortedActors.get(i);
+        actorLineOffset.put(actor.id, i);
+        if (selectionManager!=null && selectionManager.hasSelection()) {
+          // Pre-check if any task of this actor is selected to highlight the whole line
+          for (TaskInstance t : selectionManager.getSelectedTasks()) {
+            if (t.actorsInvolved != null && !t.actorsInvolved.isEmpty() && t.actorsInvolved.get(0).equals(actor)) {
+              actorHighlighted.add(actor);
+              break;
+            }
+          }
+        }
       }
 
       Map<Rectangle,Actor> actorProcAreas=processActorAreas.get(p.id);
@@ -157,10 +179,15 @@ public class ProcessTimelinePanel extends TimelinePanel{
                 lastX[offsetIndex] = x0;
                 g.setColor(new Color(roleColor.getRed(), roleColor.getGreen(), roleColor.getBlue(), 128));
               }
-              else
+              else {
                 g.setColor(roleColor);
+                if (actorHighlighted!=null && actorHighlighted.contains(primaryActor)) {
+                  g.setColor(Color.black);
+                  g.drawLine(lastX[offsetIndex], y+1, x1, y+1);
+                }
+              }
               g.drawLine(lastX[offsetIndex], y, x1, y);
-            }
+           }
             //g.setColor(actionTypeColors.get(t.actionType));
             g.setColor(sColor);
             ActionType aType=gProc.actionTypes.get(t.actionType);
