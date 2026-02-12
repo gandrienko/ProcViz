@@ -4,34 +4,118 @@ import structures.GlobalProcess;
 import javax.swing.*;
 import java.awt.*;
 import java.time.LocalDate;
-import java.util.Map;
+import java.util.*;
+import java.util.List;
 
 public class ActionOverviewPanel extends JPanel {
-  public ActionOverviewPanel(GlobalProcess gProc) {
-    setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+  private List<CollapsibleActionSection> sections = new ArrayList<>();
+  private int globalMax = 0;
+  private int mode = 1; // 1: common, 2: individual, 3: common visible
+  private JPanel contentPanel; // The panel inside the scroll pane
 
-    // Use your new method in GlobalProcess
+  public ActionOverviewPanel(GlobalProcess gProc) {
+    // Use BorderLayout to separate ScrollPane from ControlPanel
+    setLayout(new BorderLayout());
+
     Map<String, Map<LocalDate, Integer>> data = gProc.getActionCountsByDay();
 
-    // Find global max across all action types for consistent bar scale
-    int globalMax = 0;
-    for (Map<LocalDate, Integer> counts : data.values()) {
-      for (int val : counts.values()) {
-        if (val > globalMax) globalMax = val;
+    // --- Logic for Sorting (remains same) ---
+    List<ActionPeakInfo> sortedActions = new ArrayList<>();
+    for (String type : data.keySet()) {
+      int localMax = 0;
+      LocalDate peakDate = null;
+      for (Map.Entry<LocalDate, Integer> entry : data.get(type).entrySet()) {
+        if (entry.getValue() > localMax) {
+          localMax = entry.getValue();
+          peakDate = entry.getKey();
+        }
+      }
+      if (localMax > globalMax) globalMax = localMax;
+      if (peakDate != null) sortedActions.add(new ActionPeakInfo(type, peakDate, localMax));
+    }
+    Collections.sort(sortedActions, (a, b) -> {
+      int dateComp = a.peakDate.compareTo(b.peakDate);
+      if (dateComp != 0) return dateComp;
+      if (a.localMax!=b.localMax)
+        return (a.localMax<b.localMax)?1:-1;
+      return a.actionName.compareTo(b.actionName); // Sub-sort by name
+    });
+
+    // --- Content Panel Setup ---
+    contentPanel = new JPanel();
+    contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+
+    for (ActionPeakInfo info : sortedActions) {
+      ActionHistogramPanel hist = new ActionHistogramPanel(
+          gProc.getListOfPhases(), data.get(info.actionName), globalMax);
+
+      // Callback now includes a call to updateLayout to remove empty space
+      CollapsibleActionSection section = new CollapsibleActionSection(info.actionName, hist, () -> {
+        updateScaling();
+        updateLayout();
+      });
+
+      sections.add(section);
+      contentPanel.add(section);
+    }
+
+    // Use a wrapper panel with BorderLayout.NORTH to prevent vertical stretching
+    // of sections if the list is short
+    JPanel topWrapper = new JPanel(new BorderLayout());
+    topWrapper.add(contentPanel, BorderLayout.NORTH);
+
+    JScrollPane scrollPane = new JScrollPane(topWrapper);
+    scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+
+    // 1) Add ScrollPane to CENTER
+    add(scrollPane, BorderLayout.CENTER);
+
+    // 2) Add ControlPanel to SOUTH (Fixed at bottom)
+    add(createControlPanel(), BorderLayout.SOUTH);
+  }
+
+  private void updateLayout() {
+    // Force the UI to recalculate sizes and move panels up
+    contentPanel.revalidate();
+    contentPanel.repaint();
+  }
+
+  private JPanel createControlPanel() {
+    JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+    panel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.GRAY));
+
+    JRadioButton commonBtn = new JRadioButton("Common for all", mode == 1);
+    JRadioButton individualBtn = new JRadioButton("Individual", mode == 2);
+    JRadioButton visibleBtn = new JRadioButton("Common for visible", mode == 3);
+
+    ButtonGroup group = new ButtonGroup();
+    group.add(commonBtn); group.add(individualBtn); group.add(visibleBtn);
+
+    commonBtn.addActionListener(e -> { mode = 1; updateScaling(); });
+    individualBtn.addActionListener(e -> { mode = 2; updateScaling(); });
+    visibleBtn.addActionListener(e -> { mode = 3; updateScaling(); });
+
+    panel.add(new JLabel("Scale Mode: "));
+    panel.add(commonBtn); panel.add(individualBtn); panel.add(visibleBtn);
+    return panel;
+  }
+
+  public void updateScaling() {
+    int currentVisibleMax = 0;
+    if (mode == 3) {
+      for (CollapsibleActionSection sec : sections) {
+        if (sec.isExpanded()) currentVisibleMax = Math.max(currentVisibleMax, sec.getLocalMax());
       }
     }
 
-    // Add a section for each action type
-    for (String actionType : data.keySet()) {
-      ActionHistogramPanel hist = new ActionHistogramPanel(
-          gProc.getListOfPhases(),
-          data.get(actionType),
-          globalMax
-      );
-      add(new CollapsibleActionSection(actionType, hist));
+    for (CollapsibleActionSection sec : sections) {
+      int targetMax = (mode == 1) ? globalMax : (mode == 2 ? sec.getLocalMax() : currentVisibleMax);
+      sec.getHistogramPanel().setMaxCount(targetMax);
     }
+  }
 
-    // Keeps everything at the top if there aren't many actions
-    add(Box.createVerticalGlue());
+  private static class ActionPeakInfo {
+    String actionName; LocalDate peakDate; int localMax;
+    ActionPeakInfo(String n, LocalDate d, int m) { actionName = n; peakDate = d; localMax = m; }
   }
 }

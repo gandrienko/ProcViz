@@ -11,11 +11,20 @@ public class ActionHistogramPanel extends TimelinePanel {
   private Map<LocalDate, Integer> dayCounts;
   private int maxCount;
 
+  public void setMaxCount(int maxCount) {
+    this.maxCount = maxCount;
+    repaint();
+  }
+
   public ActionHistogramPanel(java.util.List<Phase> phases, Map<LocalDate, Integer> dayCounts, int maxCount) {
     super(phases);
     this.dayCounts = dayCounts;
     this.maxCount = maxCount;
     setPreferredSize(new Dimension(800, 100)); // Default height for unfolded state
+  }
+
+  public Map<LocalDate, Integer> getDayCounts() {
+    return dayCounts;
   }
 
   @Override
