@@ -53,7 +53,7 @@ public class ActionHistogramPanel extends TimelinePanel {
         LocalDate date2 = getDateAtX(dragEndPoint.x);
 
         if (date1.equals(date2)) {
-          int countAtMouse=(int)Math.round((double)(maxCountBarHeight-e.getY())/maxCountBarHeight*maxCount);
+          int countAtMouse=(int)Math.round((double)(maxCountBarHeight-e.getY())/maxCountBarHeight*getMaxCount());
 
           // 2. Fetch tasks for this action/date
           List<TaskInstance> tasks = tasksByDays.get(date1);
@@ -95,14 +95,15 @@ public class ActionHistogramPanel extends TimelinePanel {
 
         dragStartPoint = null; // Reset
       }
-
+      /*
       public void mouseClicked(MouseEvent e) {
         // 1. Find the date under the mouse
         LocalDate dateAtMouse = getDateAtX(e.getX());
 
         // 2. Fetch tasks for this action/date
         List<TaskInstance> tasks = tasksByDays.get(dateAtMouse);
-        if (tasks != null) {
+        int countAtMouse=(int)Math.round((double)(maxCountBarHeight-e.getY())/maxCountBarHeight*getMaxCount());
+        if (tasks != null && tasks.size()>=countAtMouse) {
           selectionManager.toggleTasks(tasks);
           repaint();
         }
@@ -114,6 +115,7 @@ public class ActionHistogramPanel extends TimelinePanel {
           }
         }
       }
+      */
     };
 
     this.addMouseListener(dragListener);
@@ -124,6 +126,10 @@ public class ActionHistogramPanel extends TimelinePanel {
   public void setMaxCount(int maxCount) {
     this.maxCount = maxCount;
     repaint();
+  }
+
+  public int getMaxCount() {
+    return maxCount;
   }
 
   public Map<LocalDate, Integer> getDayCounts() {

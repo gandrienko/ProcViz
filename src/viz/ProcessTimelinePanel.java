@@ -24,7 +24,14 @@ public class ProcessTimelinePanel extends TimelinePanel{
   protected Map<String,Map<Rectangle,TaskInstance>> processTaskAreas=null;
   protected Map<String, Color> actorRoleColors=null;
   protected Map<String, Color> actionTypeColors=null;
-  
+
+  // Define the dashed stroke for "inactive" periods
+  private final float[] dashPattern = {3.0f, 2.0f};
+  private final Stroke dashedStroke = new BasicStroke(1f, BasicStroke.CAP_BUTT,
+      BasicStroke.JOIN_MITER, 5.0f, dashPattern, 0.0f);
+  private final Stroke solidStroke = new BasicStroke(2f); // Standard thin line
+  private final Stroke highlightedStroke = new BasicStroke(3f); // Bold for selection
+
   public ProcessTimelinePanel(GlobalProcess gProc, SelectionManager selectionManager) {
     super(gProc.getListOfPhases());
     this.gProc=gProc;
@@ -75,8 +82,8 @@ public class ProcessTimelinePanel extends TimelinePanel{
 
     Graphics2D g2d=(Graphics2D) g;
     Stroke stroke=g2d.getStroke();
-    g2d.setStroke(new BasicStroke(2));
     Font font=g2d.getFont();
+
     if (symbolMode==SYMBOL_CHAR) {
       // Set font: Bold Italic, size 11
       Font thickFont = new Font("SansSerif", Font.BOLD | Font.ITALIC, 11);
@@ -169,22 +176,28 @@ public class ProcessTimelinePanel extends TimelinePanel{
             if (x0<0) {
               x0=x1;
               g.setColor(Color.darkGray);
+              g2d.setStroke(stroke);
               g.drawLine(x0,y0+ actorLineSpacing / 2,x1,y0+ actorLineSpacing / 2+(sortedActors.size()-1)*actorLineSpacing);
             }
             if (offsetIndex!=null) {
               Color roleColor = (actorRoleColors == null) ? null : actorRoleColors.get(primaryActor.getMainRole());
               if (roleColor == null)
                 roleColor = Color.gray;
+              boolean lineHighlighted=actorHighlighted!=null && actorHighlighted.contains(primaryActor);
+
               if (lastX[offsetIndex] < 0) {
                 lastX[offsetIndex] = x0;
-                g.setColor(new Color(roleColor.getRed(), roleColor.getGreen(), roleColor.getBlue(), 128));
+                g2d.setStroke(dashedStroke);
+                g.setColor((lineHighlighted)?Color.black:roleColor);
               }
               else {
-                g.setColor(roleColor);
-                if (actorHighlighted!=null && actorHighlighted.contains(primaryActor)) {
+                if (lineHighlighted) {
                   g.setColor(Color.black);
+                  g2d.setStroke(highlightedStroke);
                   g.drawLine(lastX[offsetIndex], y+1, x1, y+1);
                 }
+                g2d.setStroke(solidStroke);
+                g.setColor(roleColor);
               }
               g.drawLine(lastX[offsetIndex], y, x1, y);
            }
@@ -234,8 +247,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
     int width = getWidth();
 
     Graphics2D g2d=(Graphics2D) g;
-    Stroke stroke=g2d.getStroke(), thickStroke=new BasicStroke(2);
-    g2d.setStroke(thickStroke);
+    Stroke stroke=g2d.getStroke();
     Font font=g2d.getFont();
     if (symbolMode==SYMBOL_CHAR) {
       // Set font: Bold Italic, size 11
@@ -289,6 +301,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
       Color actorColor = (actorRoleColors == null) ? null : actorRoleColors.get(actor.getMainRole());
       if (actorColor == null)
         actorColor = Color.gray;
+
       g.setColor(new Color(actorColor.getRed(),actorColor.getGreen(),actorColor.getBlue(),32));
       g.fillRect(aStart,y0-markRadius,aEnd-aStart,(aProc.size()-1)*actorLineSpacing+markDiameter);
 
@@ -309,7 +322,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
         g.setColor(new Color(actorColor.getRed(),actorColor.getGreen(),actorColor.getBlue(),144));
         g2d.setStroke(stroke);
         g.drawLine(xStart,y,xEnd,y);
-        g2d.setStroke(thickStroke);
+        g2d.setStroke(solidStroke);
 
         LocalDateTime minTaskTime=pTime.end, maxTaskTime=pTime.start;
         for (int sIdx=0; sIdx<p.states.size(); sIdx++) {

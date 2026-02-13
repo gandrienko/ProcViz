@@ -309,6 +309,7 @@ public class Main {
 
 // Example: Add to a side panel or new Frame
         JFrame overviewFrame = new JFrame("Actions Overview");
+        overviewFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         //overviewFrame.add(scrollPaneActions);
         overviewFrame.add(overviewPanel);
         overviewFrame.setSize(1000, 600);
