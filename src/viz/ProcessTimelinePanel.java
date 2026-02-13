@@ -188,8 +188,11 @@ public class ProcessTimelinePanel extends TimelinePanel{
               }
               g.drawLine(lastX[offsetIndex], y, x1, y);
            }
-            //g.setColor(actionTypeColors.get(t.actionType));
-            g.setColor(sColor);
+
+            if (selectionManager!=null && selectionManager.isTaskSelected(t))
+              g.setColor(Color.black);
+            else
+              g.setColor(sColor);
             ActionType aType=gProc.actionTypes.get(t.actionType);
             if (symbolMode==SYMBOL_CHAR && aType!=null && aType.code!=null && aType.code.length()>0) {
               int dx = fm.stringWidth(aType.code) / 2;

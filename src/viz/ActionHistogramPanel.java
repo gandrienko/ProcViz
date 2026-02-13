@@ -9,7 +9,7 @@ import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
 
@@ -17,7 +17,9 @@ public class ActionHistogramPanel extends TimelinePanel {
   private Map<LocalDate, Integer> dayCounts=null;
   private Map<LocalDate, List<TaskInstance>> tasksByDays=null;
   private SelectionManager selectionManager=null;
-  private int maxCount;
+  private int maxCount, maxCountBarHeight=0;
+  // Variables to track drag state
+  private Point dragStartPoint = null;
 
   public ActionHistogramPanel(java.util.List<Phase> phases,
                               Map<LocalDate, Integer> dayCounts,
@@ -32,13 +34,71 @@ public class ActionHistogramPanel extends TimelinePanel {
     setPreferredSize(new Dimension(800, 80));
     setToolTipText(""); // Required to enable the Swing tooltip system
 
-    this.addMouseListener(new MouseAdapter() {
+    MouseAdapter dragListener = new MouseAdapter() {
       @Override
+      public void mousePressed(MouseEvent e) {
+        if (maxCountBarHeight<=0)
+          return;
+        dragStartPoint = e.getPoint();
+      }
+
+      @Override
+      public void mouseReleased(MouseEvent e) {
+        if (dragStartPoint == null || maxCountBarHeight<=0) return;
+
+        Point dragEndPoint = e.getPoint();
+
+        // 2. Identify the date range
+        LocalDate date1 = getDateAtX(dragStartPoint.x);
+        LocalDate date2 = getDateAtX(dragEndPoint.x);
+
+        if (date1.equals(date2)) {
+          int countAtMouse=(int)Math.round((double)(maxCountBarHeight-e.getY())/maxCountBarHeight*maxCount);
+
+          // 2. Fetch tasks for this action/date
+          List<TaskInstance> tasks = tasksByDays.get(date1);
+          if (tasks != null && tasks.size()>=countAtMouse) {
+            selectionManager.toggleTasks(tasks);
+            repaint();
+          }
+          else if (e.getClickCount() == 2) {
+            // Clicked background
+            if (selectionManager.hasSelection()) {
+              selectionManager.clearSelection();
+              repaint();
+            }
+          }
+        }
+        else {
+
+          LocalDate startDate = date1.isBefore(date2) ? date1 : date2;
+          LocalDate endDate = date1.isAfter(date2) ? date1 : date2;
+
+          // 3. Collect all tasks within this date range
+          List<TaskInstance> tasksToToggle = new ArrayList<TaskInstance>();
+
+          // We iterate through our data map to find dates in the range
+          for (Map.Entry<LocalDate, List<TaskInstance>> entry : tasksByDays.entrySet()) {
+            LocalDate d = entry.getKey();
+            if ((d.isEqual(startDate) || d.isAfter(startDate)) &&
+                (d.isEqual(endDate) || d.isBefore(endDate))) {
+              tasksToToggle.addAll(entry.getValue());
+            }
+          }
+
+          // 4. Update the SelectionManager
+          if (!tasksToToggle.isEmpty()) {
+            selectionManager.toggleTasks(tasksToToggle);
+            repaint();
+          }
+        }
+
+        dragStartPoint = null; // Reset
+      }
+
       public void mouseClicked(MouseEvent e) {
         // 1. Find the date under the mouse
-        long totalSeconds = ChronoUnit.SECONDS.between(minDate, maxDate);
-        long secondsAtMouse = (long) ((e.getX() * (double) totalSeconds) / getWidth());
-        LocalDate dateAtMouse = minDate.plusSeconds(secondsAtMouse).toLocalDate();
+        LocalDate dateAtMouse = getDateAtX(e.getX());
 
         // 2. Fetch tasks for this action/date
         List<TaskInstance> tasks = tasksByDays.get(dateAtMouse);
@@ -54,7 +114,10 @@ public class ActionHistogramPanel extends TimelinePanel {
           }
         }
       }
-    });
+    };
+
+    this.addMouseListener(dragListener);
+    this.addMouseMotionListener(dragListener);
 
   }
 
@@ -65,6 +128,15 @@ public class ActionHistogramPanel extends TimelinePanel {
 
   public Map<LocalDate, Integer> getDayCounts() {
     return dayCounts;
+  }
+
+  private LocalDate getDateAtX(int x) {
+    // Ensure x is within bounds
+    x = Math.max(0, Math.min(x, getWidth()));
+
+    long totalSeconds = java.time.temporal.ChronoUnit.SECONDS.between(minDate, maxDate);
+    long secondsAtX = (long) ((x * (double) totalSeconds) / getWidth());
+    return minDate.plusSeconds(secondsAtX).toLocalDate();
   }
 
   @Override
@@ -82,6 +154,7 @@ public class ActionHistogramPanel extends TimelinePanel {
 
     int width = getWidth();
     int height = getHeight();
+    maxCountBarHeight=height-2;
     long totalSeconds = ChronoUnit.SECONDS.between(minDate, maxDate);
 
     // 2. Draw Histogram Bars
@@ -98,7 +171,7 @@ public class ActionHistogramPanel extends TimelinePanel {
       int barWidth = Math.max(x2 - x1, 1);
 
       double ratio = (double) entry.getValue() / maxCount;
-      int barHeight = (int) (ratio * (height - 2));
+      int barHeight = (int) (ratio * maxCountBarHeight);
 
       g2d.fillRect(x1, height - barHeight, barWidth, barHeight);
 
@@ -110,7 +183,7 @@ public class ActionHistogramPanel extends TimelinePanel {
             if (tasks.contains(task)) ++nSelected;
           if (nSelected>0) {
             double selRatio=(double)nSelected/maxCount;
-            int selHeight = (int) (selRatio * (height - 2));
+            int selHeight = (int) (selRatio * maxCountBarHeight);
             Color prevColor=g2d.getColor();
             g2d.setColor(new Color(60, 60, 60, 255));
             g2d.fillRect(x1, height - selHeight, barWidth, selHeight);
