@@ -77,335 +77,251 @@ public class ProcessTimelinePanel extends TimelinePanel{
         paintByActors(g);
   }
 
+  private void updatePanelSize(int height) {
+    height += 2 * actorLineSpacing;
+    setPreferredSize(new Dimension(getPreferredSize().width, height));
+    revalidate(); // Notify the scroll pane that the size has changed
+  }
+
+  private int getXForTime(LocalDateTime time, int width) {
+    if (time == null) return 0;
+    long secondsFromStart = ChronoUnit.SECONDS.between(minDate, time);
+    return (int) ((secondsFromStart * width) / (double) totalDuration);
+  }
+
+  private void clearAreaMaps() {
+    if (processAreas == null) processAreas = new HashMap<>(); else processAreas.clear();
+    if (processTaskAreas == null) processTaskAreas = new HashMap<>(); else processTaskAreas.clear();
+    if (processActorAreas == null) processActorAreas = new HashMap<>(); else processActorAreas.clear();
+    if (actorAreas == null) actorAreas = new HashMap<>(); else actorAreas.clear();
+  }
+
   public void paintByProcesses(Graphics g) {
     int width = getWidth();
-
-    Graphics2D g2d=(Graphics2D) g;
-    Stroke stroke=g2d.getStroke();
-    Font font=g2d.getFont();
-
-    if (symbolMode==SYMBOL_CHAR) {
-      // Set font: Bold Italic, size 11
-      Font thickFont = new Font("SansSerif", Font.BOLD | Font.ITALIC, 11);
-      g2d.setFont(thickFont);
-      // Set rendering hints for better quality
-      g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-          RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-    }
+    Graphics2D g2d = (Graphics2D) g;
+    Stroke defaultStroke = g2d.getStroke();
     FontMetrics fm = g2d.getFontMetrics();
 
-    if (processAreas==null)
-      processAreas=new HashMap<Rectangle,ProcessInstance>(gProc.processes.size());
-    else
-      processAreas.clear();
-    if (processTaskAreas==null)
-      processTaskAreas=new HashMap<String,Map<Rectangle,TaskInstance>>(gProc.processes.size());
-    else
-      processTaskAreas.clear();
-    if (processActorAreas==null)
-      processActorAreas=new HashMap<String,Map<Rectangle,Actor>>(gProc.processes.size());
-    else
-      processActorAreas.clear();
-    if (actorAreas!=null)
-      actorAreas.clear();;
+    clearAreaMaps();
+    int y0 = yTop + 2 * actorLineSpacing;
 
-    int y0=yTop+2*actorLineSpacing;
+    for (ProcessInstance p : gProc.processes) {
+      TimeInterval pLife = p.getProcessLifetime();
+      int xStartProcess = getXForTime(pLife.start, width);
+      int xEndProcess = getXForTime(pLife.end, width);
 
-    for (ProcessInstance p: gProc.processes) {
-      List<Actor> sortedActors = gProc.getActorsSorted(p.actors);
+      List<ProcessThread> sortedThreads = new ArrayList<>(p.threads.values());
+      int maxY = y0;
 
-      Map<String, Integer> actorLineOffset = new HashMap<>();
-      ArrayList<Actor> actorHighlighted = (selectionManager==null || !selectionManager.hasSelection())?null :
-          new ArrayList<Actor>(sortedActors.size());
-      for (int i = 0; i < sortedActors.size(); i++) {
-        Actor actor=sortedActors.get(i);
-        actorLineOffset.put(actor.id, i);
-        if (selectionManager!=null && selectionManager.hasSelection()) {
-          // Pre-check if any task of this actor is selected to highlight the whole line
-          for (TaskInstance t : selectionManager.getSelectedTasks()) {
-            if (t.actorsInvolved != null && !t.actorsInvolved.isEmpty() && t.actorsInvolved.get(0).equals(actor)) {
-              actorHighlighted.add(actor);
+      // Vertical initiation line
+      if (!sortedThreads.isEmpty()) {
+        g.setColor(Color.darkGray);
+        g2d.setStroke(defaultStroke);
+        int vLineHeight = (sortedThreads.size() - 1) * actorLineSpacing;
+        g.drawLine(xStartProcess, y0 + actorLineSpacing / 2,
+            xStartProcess, y0 + actorLineSpacing / 2 + vLineHeight);
+      }
+
+      for (int i = 0; i < sortedThreads.size(); i++) {
+        ProcessThread thread = sortedThreads.get(i);
+        int y = y0 + i * actorLineSpacing + actorLineSpacing / 2;
+        maxY = Math.max(maxY, y);
+
+        // Determine if this specific thread contains selected tasks
+        boolean isThreadSelected = false;
+        if (selectionManager != null && selectionManager.hasSelection()) {
+          for (TaskInstance t : thread.tasks) {
+            if (selectionManager.isTaskSelected(t)) {
+              isThreadSelected = true;
               break;
             }
           }
         }
-      }
 
-      Map<Rectangle,Actor> actorProcAreas=processActorAreas.get(p.id);
-      if (actorProcAreas==null) {
-        actorProcAreas=new HashMap<Rectangle,Actor>(sortedActors.size());
-        processActorAreas.put(p.id,actorProcAreas);
-      }
-      else
-        actorProcAreas.clear();
+        TaskInstance firstTask = thread.tasks.get(0);
+        int xFirstAction = getXForTime(firstTask.actual.start, width);
 
-      Map<Rectangle,TaskInstance> taskAreas=processTaskAreas.get(p.id);
-      if (taskAreas==null) {
-        taskAreas=new HashMap<Rectangle,TaskInstance>(100);
-        processTaskAreas.put(p.id,taskAreas);
-      }
-      else
-        taskAreas.clear();
-
-      int x0=-1000;
-      int lastX[]=new int[sortedActors.size()];
-      for (int i=0; i<lastX.length; i++)
-        lastX[i]=-1000;
-
-      int maxY=y0, maxX=-1000;
-      for (int i=0; i<p.states.size(); i++) {
-        StateInstance s=p.states.get(i);
-        Color sColor=phaseColors.get(s.name);
-        if (sColor==null)
-          sColor=Color.gray;
-        sColor=Utils.toSaturated(sColor);
-
-        for (int j=0; j<s.tasks.size(); j++) {
-          TaskInstance t=s.tasks.get(j);
-          if (t.actual!=null && t.actual.start!=null) {
-            long secondsFromStart = ChronoUnit.SECONDS.between(minDate,t.actual.start);
-            long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,t.actual.end);
-            int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
-            int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
-
-            Actor primaryActor = (t.actorsInvolved==null || t.actorsInvolved.isEmpty())?null:t.actorsInvolved.get(0);
-            Integer offsetIndex = (primaryActor==null)?null:actorLineOffset.get(primaryActor.id);
-            int y= (offsetIndex == null)? y0:  y0 + offsetIndex * actorLineSpacing + actorLineSpacing / 2;
-            if (maxY<y) maxY=y;
-
-            if (x0<0) {
-              x0=x1;
-              g.setColor(Color.darkGray);
-              g2d.setStroke(stroke);
-              g.drawLine(x0,y0+ actorLineSpacing / 2,x1,y0+ actorLineSpacing / 2+(sortedActors.size()-1)*actorLineSpacing);
-            }
-            if (offsetIndex!=null) {
-              Color roleColor = (actorRoleColors == null) ? null : actorRoleColors.get(primaryActor.getMainRole());
-              if (roleColor == null)
-                roleColor = Color.gray;
-              boolean lineHighlighted=actorHighlighted!=null && actorHighlighted.contains(primaryActor);
-
-              if (lastX[offsetIndex] < 0) {
-                lastX[offsetIndex] = x0;
-                g2d.setStroke(dashedStroke);
-                g.setColor((lineHighlighted)?Color.black:roleColor);
-              }
-              else {
-                if (lineHighlighted) {
-                  g.setColor(Color.black);
-                  g2d.setStroke(highlightedStroke);
-                  g.drawLine(lastX[offsetIndex], y+1, x1, y+1);
-                }
-                g2d.setStroke(solidStroke);
-                g.setColor(roleColor);
-              }
-              g.drawLine(lastX[offsetIndex], y, x1, y);
-           }
-
-            if (selectionManager!=null && selectionManager.isTaskSelected(t))
-              g.setColor(Color.black);
-            else
-              g.setColor(sColor);
-            ActionType aType=gProc.actionTypes.get(t.actionType);
-            if (symbolMode==SYMBOL_CHAR && aType!=null && aType.code!=null && aType.code.length()>0) {
-              int dx = fm.stringWidth(aType.code) / 2;
-              g2d.drawString(aType.code,x1-dx,y+fm.getHeight()/2-fm.getDescent());
-            }
-            else {
-              g2d.fillOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
-              g2d.drawOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
-            }
-            if (offsetIndex!=null)
-              lastX[offsetIndex]=x2;
-            if (maxX<x2) maxX=x2;
-            taskAreas.put(new Rectangle(x1-markRadius-3,y-markRadius-3,
-                markDiameter+x2-x1+6,markDiameter+6),t);
-          }
+        // Coloring Logic
+        if (isThreadSelected) {
+          g.setColor(Color.black);
+          // Pre-activity: Thin and Dashed
+          g2d.setStroke(dashedStroke);
+          g.drawLine(xStartProcess, y, xFirstAction, y);
+          // Activity phase: Bold and Solid
+          g2d.setStroke(highlightedStroke);
+          g.drawLine(xFirstAction, y, xEndProcess, y);
+        } else {
+          Color roleColor = actorRoleColors.getOrDefault(thread.role, Color.gray);
+          g.setColor(roleColor);
+          // Pre-activity: Thin and Dashed
+          g2d.setStroke(dashedStroke);
+          g.drawLine(xStartProcess, y, xFirstAction, y);
+          // Activity phase: Thin and Solid
+          g2d.setStroke(solidStroke);
+          g.drawLine(xFirstAction, y, xEndProcess, y);
         }
-      }
-      Rectangle r=new Rectangle(x0-3,y0-3,maxX-x0+6,maxY-y0+6);
-      processAreas.put(r,p);
 
-      for (int i=0; i<sortedActors.size(); i++) {
-        int y=  y0 + i * actorLineSpacing + actorLineSpacing / 2;
-        actorProcAreas.put(new Rectangle(x0-markRadius-3, y-markRadius-3,
-                lastX[i]-x0+markDiameter+6, markDiameter+6),
-            sortedActors.get(i));
+        for (TaskInstance t : thread.tasks) {
+          drawTaskSymbol(g2d, t, width, y, p, fm);
+        }
+
+        Map<Rectangle, Actor> actorProcAreas = processActorAreas.computeIfAbsent(p.id, k -> new HashMap<>());
+        actorProcAreas.put(new Rectangle(xStartProcess, y - markRadius, xEndProcess - xStartProcess, markDiameter), thread.actor);
       }
 
-      y0=maxY+actorLineSpacing*3;
+      processAreas.put(new Rectangle(xStartProcess - 3, y0 - 3, xEndProcess - xStartProcess + 6, maxY - y0 + 6), p);
+      y0 = maxY + actorLineSpacing * 4;
     }
-    g2d.setStroke(stroke);
-    g2d.setFont(font);
-    int height=y0+2*actorLineSpacing;
-    setPreferredSize(new Dimension(getPreferredSize().width, height));
-    setSize(width,height);
+    updatePanelSize(y0);
   }
 
+  private void drawTaskSymbol(Graphics2D g2d, TaskInstance t, int width, int y, ProcessInstance p, FontMetrics fm) {
+    if (t.actual == null || t.actual.start == null) return;
+    int x1 = getXForTime(t.actual.start, width);
+    int x2 = getXForTime(t.actual.end, width);
+
+    boolean isSelected = selectionManager != null && selectionManager.isTaskSelected(t);
+
+    if (isSelected) {
+      g2d.setColor(Color.black);
+    } else {
+      Color symColor = actionTypeColors.getOrDefault(t.actionType, Color.gray);
+      g2d.setColor(Utils.toSaturated(symColor));
+    }
+
+    ActionType aType = gProc.actionTypes.get(t.actionType);
+    if (symbolMode == SYMBOL_CHAR && aType != null && aType.code != null) {
+      int dx = fm.stringWidth(aType.code) / 2;
+      g2d.drawString(aType.code, x1 - dx, y + fm.getHeight() / 2 - fm.getDescent());
+    } else {
+      g2d.fillOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
+      if (isSelected) {
+        g2d.setStroke(new BasicStroke(2.0f));
+        g2d.drawOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
+      }
+    }
+
+    Map<Rectangle, TaskInstance> taskAreas = processTaskAreas.computeIfAbsent(p.id, k -> new HashMap<>());
+    taskAreas.put(new Rectangle(x1 - markRadius - 3, y - markRadius - 3,
+        markDiameter + x2 - x1 + 6, markDiameter + 6), t);
+  }
 
   public void paintByActors(Graphics g) {
     int width = getWidth();
-
-    Graphics2D g2d=(Graphics2D) g;
-    Stroke stroke=g2d.getStroke();
-    Font font=g2d.getFont();
-    if (symbolMode==SYMBOL_CHAR) {
-      // Set font: Bold Italic, size 11
-      Font thickFont = new Font("SansSerif", Font.BOLD | Font.ITALIC, 11);
-      g2d.setFont(thickFont);
-      // Set rendering hints for better quality
-      g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-          RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-    }
+    Graphics2D g2d = (Graphics2D) g;
+    Stroke defaultStroke = g2d.getStroke();
     FontMetrics fm = g2d.getFontMetrics();
+    clearAreaMaps();
 
-    if (processAreas!=null)
-      processAreas.clear();
-    List<Actor> sortedActors = gProc.getActorsSorted(gProc.actors.values());
+    // Use the global list of actors, sorted by their overall involvement
+    List<Actor> sortedGlobalActors = gProc.getActorsSorted(gProc.actors.values());
+    int y0 = yTop + 2 * actorLineSpacing;
 
-    if (processAreas==null)
-      processAreas=new HashMap<Rectangle,ProcessInstance>(gProc.processes.size());
-    else
-      processAreas.clear();
-    if (processTaskAreas==null)
-      processTaskAreas=new HashMap<String,Map<Rectangle,TaskInstance>>(gProc.processes.size());
-    else
-      processTaskAreas.clear();
-    if (processActorAreas==null)
-      processActorAreas=new HashMap<String,Map<Rectangle,Actor>>(gProc.processes.size());
-    else
-      processActorAreas.clear();
-    if (actorAreas!=null)
-      actorAreas.clear();
-    else
-      actorAreas=new HashMap<Rectangle,Actor>(gProc.actors.size());
-
-    List<ProcessInstance> sortedProcesses=gProc.getProcessesByEndTimeDescending();
-
-    int y0=yTop+2*actorLineSpacing;
-
-    for (int aIdx=0; aIdx<sortedActors.size(); aIdx++) {
-      Actor actor=sortedActors.get(aIdx);
-      List<ProcessInstance> aProc=new ArrayList<ProcessInstance>(10);
-      for (int pIdx=0; pIdx<sortedProcesses.size(); pIdx++)
-        if (sortedProcesses.get(pIdx).actors.contains(actor))
-          aProc.add(sortedProcesses.get(pIdx));
-      if (aProc.isEmpty())
-        continue;
-
-      long secondsFromStart = ChronoUnit.SECONDS.between(minDate,actor.start);
-      long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,actor.end);
-      int aStart=(int) ((secondsFromStart * width) / (double) totalDuration);
-      int aEnd= (int) ((secondsFromStart2 * width) / (double) totalDuration);
-
-      Color actorColor = (actorRoleColors == null) ? null : actorRoleColors.get(actor.getMainRole());
-      if (actorColor == null)
-        actorColor = Color.gray;
-
-      g.setColor(new Color(actorColor.getRed(),actorColor.getGreen(),actorColor.getBlue(),32));
-      g.fillRect(aStart,y0-markRadius,aEnd-aStart,(aProc.size()-1)*actorLineSpacing+markDiameter);
-
-      int minX=-1000, maxX=-1000, y=y0;
-      for (int pIdx=0; pIdx<aProc.size(); pIdx++) {
-        ProcessInstance p=aProc.get(pIdx);
-        TimeInterval pTime=p.getProcessLifetime();
-
-        secondsFromStart = ChronoUnit.SECONDS.between(minDate,pTime.start);
-        secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,pTime.end);
-        int xStart = (int) ((secondsFromStart * width) / (double) totalDuration);
-        int xEnd = (int) ((secondsFromStart2 * width) / (double) totalDuration);
-        if (minX<0 || minX>xStart)
-          minX=xStart;
-        if (maxX<xEnd)
-          maxX=xEnd;
-
-        g.setColor(new Color(actorColor.getRed(),actorColor.getGreen(),actorColor.getBlue(),144));
-        g2d.setStroke(stroke);
-        g.drawLine(xStart,y,xEnd,y);
-        g2d.setStroke(solidStroke);
-
-        LocalDateTime minTaskTime=pTime.end, maxTaskTime=pTime.start;
-        for (int sIdx=0; sIdx<p.states.size(); sIdx++) {
-          StateInstance s = p.states.get(sIdx);
-          for (int tIdx=0; tIdx<s.tasks.size(); tIdx++) {
-            TaskInstance t = s.tasks.get(tIdx);
-            if (!t.actorsInvolved.contains(actor) || t.actual == null || t.actual.start == null)
-              continue;
-            if (t.actual.start.isBefore(minTaskTime))
-              minTaskTime=t.actual.start;
-            if (t.actual.end.isAfter(maxTaskTime))
-              maxTaskTime=t.actual.end;
-          }
-          if (maxTaskTime.isAfter(minTaskTime)) {
-            secondsFromStart = ChronoUnit.SECONDS.between(minDate,minTaskTime);
-            secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,maxTaskTime);
-            int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
-            int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
-            g.setColor(actorColor);
-            g.drawLine(x1,y,x2,y);
-          }
+    for (Actor actor : sortedGlobalActors) {
+      // 1. Group all threads for this actor across all processes
+      List<ThreadContext> actorThreadContexts = new ArrayList<>();
+      for (ProcessInstance p : gProc.processes) {
+        if (p.threads.containsKey(actor.id)) {
+          actorThreadContexts.add(new ThreadContext(p, p.threads.get(actor.id)));
         }
-
-        Map<Rectangle,Actor> actorProcAreas=processActorAreas.get(p.id);
-        if (actorProcAreas==null) {
-          actorProcAreas=new HashMap<Rectangle,Actor>(10);
-          processActorAreas.put(p.id,actorProcAreas);
-        }
-
-        Map<Rectangle,TaskInstance> taskAreas=processTaskAreas.get(p.id);
-        if (taskAreas==null) {
-          taskAreas=new HashMap<Rectangle,TaskInstance>(100);
-          processTaskAreas.put(p.id,taskAreas);
-        }
-
-        for (int sIdx=0; sIdx<p.states.size(); sIdx++) {
-          StateInstance s=p.states.get(sIdx);
-          Color sColor=phaseColors.get(s.name);
-          if (sColor==null)
-            sColor=Color.gray;
-          sColor=Utils.toSaturated(sColor);
-
-          for (int tIdx=0; tIdx<s.tasks.size(); tIdx++) {
-            TaskInstance t=s.tasks.get(tIdx);
-            if (!t.actorsInvolved.contains(actor) || t.actual==null || t.actual.start==null)
-              continue;
-
-            secondsFromStart = ChronoUnit.SECONDS.between(minDate,t.actual.start);
-            secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,t.actual.end);
-            int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
-            int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
-
-            g.setColor(sColor);
-            ActionType aType=gProc.actionTypes.get(t.actionType);
-            if (symbolMode==SYMBOL_CHAR && aType!=null && aType.code!=null && aType.code.length()>0) {
-              int dx = fm.stringWidth(aType.code) / 2;
-              g2d.drawString(aType.code,x1-dx,y+fm.getHeight()/2-fm.getDescent());
-            }
-            else {
-              g2d.fillOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
-              g2d.drawOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
-            }
-            taskAreas.put(new Rectangle(x1-markRadius-3,y-markRadius-3,
-                markDiameter+x2-x1+6,markDiameter+6),t);
-          }
-        }
-        actorProcAreas.put(new Rectangle(xStart-markRadius-3, y-markRadius-3,
-                xEnd-xStart+markDiameter+6, markDiameter+6),actor);
-
-        y+=actorLineSpacing;
       }
-      actorAreas.put(new Rectangle(minX-markRadius-3,y0-markRadius-3,
-          maxX-minX+markDiameter+6,y-y0+markDiameter+6),actor);
-      y0=y+actorLineSpacing*2;
+
+      if (actorThreadContexts.isEmpty()) continue;
+      /*
+      if (actorThreadContexts.size()>1)
+        System.out.println("Actor "+actor.id+": N threads = "+actorThreadContexts.size());
+      */
+
+      // 2. Order threads chronologically by the start date of the first action
+      actorThreadContexts.sort(Comparator.comparing(tc -> tc.thread.tasks.get(0).actual.start));
+
+      int currentY = y0;
+      int minActorX = width, maxActorX = 0;
+
+      // Calculate the leftmost start point to place the vertical grouping line
+      for (ThreadContext tc : actorThreadContexts) {
+        int xPStart = getXForTime(tc.process.getProcessLifetime().start, width);
+        if (xPStart < minActorX) minActorX = xPStart;
+      }
+
+      // 3. Draw vertical grouping line (similar to paintByProcesses)
+      g.setColor(Color.darkGray);
+      g2d.setStroke(defaultStroke);
+      int vLineHeight = (actorThreadContexts.size() - 1) * actorLineSpacing;
+      g.drawLine(minActorX, y0 + actorLineSpacing / 2,
+          minActorX, y0 + actorLineSpacing / 2 + vLineHeight);
+
+      // 4. Draw each thread line
+      for (int i = 0; i < actorThreadContexts.size(); i++) {
+        ThreadContext tc = actorThreadContexts.get(i);
+        ProcessInstance p = tc.process;
+        ProcessThread thread = tc.thread;
+        int y = y0 + i * actorLineSpacing + actorLineSpacing / 2;
+        currentY = y;
+
+        TimeInterval pLife = p.getProcessLifetime();
+        int xPStart = getXForTime(pLife.start, width);
+        int xPEnd = getXForTime(pLife.end, width);
+        int xFirstAction = getXForTime(thread.tasks.get(0).actual.start, width);
+
+        if (xPEnd > maxActorX) maxActorX = xPEnd;
+
+        // Determine Selection
+        boolean isThreadSelected = false;
+        if (selectionManager != null && selectionManager.hasSelection()) {
+          for (TaskInstance t : thread.tasks) {
+            if (selectionManager.isTaskSelected(t)) {
+              isThreadSelected = true;
+              break;
+            }
+          }
+        }
+
+        // Appearance logic (Identical to paintByProcesses)
+        if (isThreadSelected) {
+          g.setColor(Color.black);
+          g2d.setStroke(dashedStroke);
+          g.drawLine(xPStart, y, xFirstAction, y);
+          g2d.setStroke(highlightedStroke);
+          g.drawLine(xFirstAction, y, xPEnd, y);
+        } else {
+          Color roleColor = actorRoleColors.getOrDefault(thread.role, Color.gray);
+          g.setColor(roleColor);
+          g2d.setStroke(dashedStroke);
+          g.drawLine(xPStart, y, xFirstAction, y);
+          g2d.setStroke(solidStroke);
+          g.drawLine(xFirstAction, y, xPEnd, y);
+        }
+
+        // Draw tasks
+        for (TaskInstance t : thread.tasks) {
+          drawTaskSymbol(g2d, t, width, y, p, fm);
+        }
+
+        // Map areas for tooltips
+        Map<Rectangle, Actor> actorProcAreas = processActorAreas.computeIfAbsent(p.id, k -> new HashMap<>());
+        actorProcAreas.put(new Rectangle(xPStart, y - markRadius, xPEnd - xPStart, markDiameter), actor);
+      }
+
+      // Map global actor area
+      actorAreas.put(new Rectangle(minActorX - 3, y0 - 3, maxActorX - minActorX + 6, currentY - y0 + 6), actor);
+      y0 = currentY + actorLineSpacing * 4;
     }
-    g2d.setStroke(stroke);
-    g2d.setFont(font);
-    int height=y0+2*actorLineSpacing;
-    setPreferredSize(new Dimension(getPreferredSize().width, height));
-    setSize(width,height);
+    updatePanelSize(y0);
   }
 
-  
+  /**
+   * Helper class to keep a thread associated with its process context
+   */
+  private static class ThreadContext {
+    ProcessInstance process;
+    ProcessThread thread;
+    ThreadContext(ProcessInstance p, ProcessThread t) {
+      this.process = p;
+      this.thread = t;
+    }
+  }
+
   public String getToolTipText(Point pt) {
     if (pt==null)
       return null;

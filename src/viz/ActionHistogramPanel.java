@@ -30,7 +30,13 @@ public class ActionHistogramPanel extends TimelinePanel {
     this.dayCounts=dayCounts;
     this.tasksByDays = tasksByDays;
     this.maxCount = maxCount;
+
     this.selectionManager=selectionManager;
+    if (selectionManager!=null)
+      selectionManager.addListener(() -> {
+        repaint();
+      });
+
     setPreferredSize(new Dimension(800, 80));
     setToolTipText(""); // Required to enable the Swing tooltip system
 
