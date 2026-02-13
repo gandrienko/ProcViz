@@ -220,9 +220,9 @@ public class LogLoader {
   public boolean loadLog(String logFilePath) {
     int nTaskInstances=0;
 
-    try (BufferedReader br = new BufferedReader(new FileReader(logFilePath))) {
-      String line; // header
+    String line=null;
 
+    try (BufferedReader br = new BufferedReader(new FileReader(logFilePath))) {
       String fieldNames[]=null;
       int processIdCN=-1, dateCN=-1, actionIdCN=-1, actionTypeCN=-1, actorIdCN=-1, actorRoleCN=-1,
           targetTypeCN=-1, targetIdCN=-1, outcomeCN=-1, statusCN=-1, paramCN=-1;
@@ -343,21 +343,23 @@ public class LogLoader {
 
         ProcessInstance process = processes.computeIfAbsent(processId, ProcessInstance::new);
         process.type="SUBMISSION";
-        Actor actor = actors.get(actorId);
-        if (actor==null) {
-          actor=new Actor(actorId);
-          actor.start=actor.end=timestamp;
-          actors.put(actorId,actor);
+        Actor performer = actors.get(actorId);
+        if (performer==null) {
+          performer=new Actor(actorId);
+          performer.start=performer.end=timestamp;
+          actors.put(actorId,performer);
         }
         else {
-          if (timestamp.isBefore(actor.start))
-            actor.start=timestamp;
-          if (timestamp.isAfter(actor.end))
-            actor.end=timestamp;
+          if (timestamp.isBefore(performer.start))
+            performer.start=timestamp;
+          if (timestamp.isAfter(performer.end))
+            performer.end=timestamp;
         }
         if (actorRole!=null)
-          actor.addRole(actorRole);
-        process.addActor(actor);
+          performer.addRole(actorRole);
+        process.addActor(performer);
+
+        ProcessThread thread=process.getOrCreateThread(performer,null);
 
         // Determine which phase this action belongs to
         if (aType.phaseName == null) continue;
@@ -373,7 +375,7 @@ public class LogLoader {
               phase.endDate.atTime(23, 59,59)));
           process.addState(state);
         }
-        state.addActor(actor);
+        state.addActor(performer);
 
         // Add this action as a TaskInstance (minimal form)
         TaskInstance task = new TaskInstance();
@@ -381,10 +383,34 @@ public class LogLoader {
         task.id=(actionIdCN>=0)?fields[actionIdCN].trim():String.format("task%04d",++nTaskInstances);
         task.actionType = action;
         task.actorsInvolved = new ArrayList<Actor>(1);
-        task.actorsInvolved.add(actor);
+        task.actorsInvolved.add(performer);
         task.actual = new TimeInterval(timestamp, timestamp);
 
+        thread.addTask(task);
+        if (thread.getRole()==null)
+          thread.setRole(performer.getMainRole());
+
         String targetActorId=null, targetActorRole=null;
+        boolean toAddNewThread=false;
+
+        if (action.toLowerCase().contains("assign") && param!=null && !param.isEmpty()) {
+          if (action.toLowerCase().contains(" as ")) {
+            int idx=action.toLowerCase().indexOf(" as ");
+            targetActorRole=action.substring(idx+4).trim();
+            targetActorId=param;
+          }
+          else
+            if (param.contains("(") && param.contains(")")) {
+              int p1 = param.indexOf('(');
+              int p2 = param.indexOf(')');
+              if (p1 > 0 && p2 > p1) {
+                targetActorId = param.substring(0, p1).trim();
+                targetActorRole = param.substring(p1 + 1, p2).trim();
+              }
+            }
+          toAddNewThread= targetActorId!=null && targetActorRole!=null;
+        }
+        else
         if (targetTypeCN>=0 && targetIdCN>=0 && targetTypeCN<fields.length && targetIdCN<fields.length) {
           String targetType=fields[targetTypeCN].trim();
           if (targetType.length()>0)
@@ -409,9 +435,11 @@ public class LogLoader {
             task.outcome=null;
         }
 
-        if (param!=null && aType.targetType!=null)
+        if (param!=null && aType.targetType!=null) {
           if (aType.targetType.equalsIgnoreCase("actor"))
-            targetActorId=param;
+            if (targetActorId == null) targetActorId = param;
+            else ;
+          }
           else
           if (aType.targetType.equalsIgnoreCase("status"))
             task.status=param;
@@ -435,7 +463,8 @@ public class LogLoader {
           if (targetActorRole==null)
             targetActorRole=aType.targetRole;
           else
-            aType.targetRole=targetActorRole;
+            if (aType.targetRole==null)
+              aType.targetRole=targetActorRole;
           if (targetActorRole!=null) {
             targetActor.addRole(targetActorRole);
             if (!targetActorRole.equalsIgnoreCase("any") &&
@@ -443,17 +472,24 @@ public class LogLoader {
               actorRoles.add(targetActorRole);
           }
           task.actorsInvolved.add(targetActor);
+          if (toAddNewThread)
+            process.getOrCreateThread(targetActor,targetActorRole);
         }
             
         state.addTask(task);
       }
     } catch (Exception ex) {
       System.out.println(ex);
+      System.out.println(line);
       return false;
     }
     if (processes.isEmpty()) {
       System.out.println("Failed to load any process!!!");
       return false;
+    }
+    // Finalize all processes
+    for (ProcessInstance pi : processes.values()) {
+      pi.cleanAndSortThreads();
     }
     return true;
   }
