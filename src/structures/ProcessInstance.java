@@ -10,7 +10,6 @@ import java.util.*;
 public class ProcessInstance {
   public String id;
   public String type; // e.g., submission, PC member, chair, etc.
-  public List<StateInstance> states = new ArrayList<>();
   public Set<Actor> actors = new HashSet<>();
 
   // Map of Actor ID to their specific ProcessThread
@@ -62,23 +61,6 @@ public class ProcessInstance {
     }
   }
 
-  public List<StateInstance> getStates() {
-    return states;
-  }
-
-  public void addState(StateInstance state) {
-    this.states.add(state);
-  }
-
-  public StateInstance getState(String stateName) {
-    for (StateInstance s : states) {
-      if (s.getName().equals(stateName)) {
-        return s;
-      }
-    }
-    return null;
-  }
-
   public void addActor(Actor actor) {
     if (actor==null || actor.id==null)
       return;
@@ -92,8 +74,31 @@ public class ProcessInstance {
     LocalDateTime earliestStart = null;
     LocalDateTime latestEnd = null;
 
+    /*
     for (StateInstance state : states) {
       for (TaskInstance task : state.tasks) {
+        if (task.actual != null) {
+          LocalDateTime start = task.actual.start;
+          LocalDateTime end = task.actual.end;
+
+          if (start != null) {
+            if (earliestStart == null || start.isBefore(earliestStart)) {
+              earliestStart = start;
+            }
+          }
+
+          if (end != null) {
+            if (latestEnd == null || end.isAfter(latestEnd)) {
+              latestEnd = end;
+            }
+          }
+        }
+      }
+    }
+    */
+    for (Map.Entry<String, ProcessThread> e:threads.entrySet()) {
+      ProcessThread th=e.getValue();
+      for (TaskInstance task : th.tasks) {
         if (task.actual != null) {
           LocalDateTime start = task.actual.start;
           LocalDateTime end = task.actual.end;

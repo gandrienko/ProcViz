@@ -90,8 +90,9 @@ public class GlobalProcess {
   public Map<String, Map<LocalDate, Integer>> getActionCountsByDay() {
     Map<String, Map<LocalDate, Integer>> counts = new TreeMap<>();
     for (ProcessInstance p : getProcesses()) {
-      for (StateInstance s : p.states) {
-        for (TaskInstance t : s.tasks) {
+      for (Map.Entry<String, ProcessThread> e:p.threads.entrySet()) {
+        ProcessThread th=e.getValue();
+        for (TaskInstance t : th.tasks) {
           LocalDate date = t.actual.start.toLocalDate();
           counts.computeIfAbsent(t.actionType, k -> new TreeMap<>())
               .merge(date, 1, Integer::sum);
@@ -104,8 +105,9 @@ public class GlobalProcess {
   public Map<String, Map<LocalDate, List<TaskInstance>>> getTasksByActionAndDay() {
     Map<String, Map<LocalDate, List<TaskInstance>>> tasksMap = new TreeMap<>();
     for (ProcessInstance p : processes) {
-      for (StateInstance s : p.states) {
-        for (TaskInstance t : s.tasks) {
+      for (Map.Entry<String, ProcessThread> e:p.threads.entrySet()) {
+        ProcessThread th=e.getValue();
+        for (TaskInstance t : th.tasks) {
           LocalDate date = t.actual.start.toLocalDate();
           tasksMap.computeIfAbsent(t.actionType, k -> new TreeMap<>())
               .computeIfAbsent(date, k -> new ArrayList<>())

@@ -367,19 +367,8 @@ public class LogLoader {
         Phase phase = phases.get(aType.phaseName);
         if (phase == null) continue;
 
-        // Get or create StateInstance in process
-        StateInstance state = process.getState(aType.phaseName);
-        if (state == null) {
-          state = new StateInstance(aType.phaseName);
-          state.setScheduled(new TimeInterval(phase.startDate.atStartOfDay(),
-              phase.endDate.atTime(23, 59,59)));
-          process.addState(state);
-        }
-        state.addActor(performer);
-
         // Add this action as a TaskInstance (minimal form)
         TaskInstance task = new TaskInstance();
-        //task.id = UUID.randomUUID().toString();
         task.id=(actionIdCN>=0)?fields[actionIdCN].trim():String.format("task%04d",++nTaskInstances);
         task.actionType = action;
         task.actorsInvolved = new ArrayList<Actor>(1);
@@ -476,7 +465,6 @@ public class LogLoader {
             process.getOrCreateThread(targetActor,targetActorRole);
         }
             
-        state.addTask(task);
       }
     } catch (Exception ex) {
       System.out.println(ex);
