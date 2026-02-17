@@ -12,6 +12,9 @@ public class ProcessInstance {
   public String type; // e.g., submission, PC member, chair, etc.
   public Set<Actor> actors = new HashSet<>();
 
+  // Assignments of actor IDs to roles in this process instance
+  public Map<String,String> roleAssignments=new LinkedHashMap<>();
+
   // Map of Actor ID to their specific ProcessThread
   public Map<String, ProcessThread> threads = new LinkedHashMap<>();
 

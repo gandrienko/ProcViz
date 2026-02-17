@@ -388,13 +388,13 @@ public class ProcessTimelinePanel extends TimelinePanel{
           t.scheduled.start.format(formatter), t.scheduled.end.format(formatter));
     Actor primaryActor = (t.actorsInvolved == null || t.actorsInvolved.isEmpty()) ? null : t.actorsInvolved.get(0);
     if (primaryActor != null) {
+      String role=p.threads.get(primaryActor.id).role;
       text += String.format("<br>Primary actor: <b>%s</b> in role <b>%s</b>",
-          primaryActor.id, primaryActor.getMainRole());
+          primaryActor.id, role);
       if (t.actorsInvolved.size() > 1)
         for (int i = 1; i < t.actorsInvolved.size(); i++) {
           Actor a = t.actorsInvolved.get(i);
-          text += String.format("<br>Involved actor: <b>%s</b> in role <b>%s</b>",
-              a.id, a.getMainRole());
+          text += String.format("<br>Involved actor: <b>%s</b>",a.id);
         }
     }
     if (t.status != null)
@@ -410,8 +410,9 @@ public class ProcessTimelinePanel extends TimelinePanel{
       return null;
     if (p==null)
       return String.format("<html>Actor ID: <b>%s</b><br>Main role: <b>%s</b></html>",
-          a.id, a.getMainRole());
+          a.id, a.generalRole);
+    String role=p.threads.get(a.id).role;
     return String.format("<html>Process ID: <b>%s</b><br>Process type: <b>%s</b>" +
-        "<br>Involved actor: <b>%s</b> in role <b>%s</b></html>", p.id, p.type, a.id, a.getMainRole());
+        "<br>Involved actor: <b>%s</b> in role <b>%s</b></html>", p.id, p.type, a.id, role);
   }
 }

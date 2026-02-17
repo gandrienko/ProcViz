@@ -13,8 +13,8 @@ import java.util.regex.*;
 public class LogLoader {
   private Map<String, ProcessInstance> processes = new HashMap<>();
 
-  private Map<String, Actor> actors = new HashMap<>();
-  private Map<String, ActionType> actionTypes = new HashMap<>();
+  private Map<String, Actor> actors = new LinkedHashMap<>();
+  private Map<String, ActionType> actionTypes = new LinkedHashMap<>();
   private List<String> actorRoles = null;
   private Map<String, Phase> phases = new LinkedHashMap<>();
 
@@ -330,7 +330,7 @@ public class LogLoader {
             actorRole=null;
           else
             if (aType.actorRole==null || aType.actorRole.equalsIgnoreCase("any") ||
-            aType.actorRole.equalsIgnoreCase("none"))
+                aType.actorRole.equalsIgnoreCase("none"))
               aType.actorRole=actorRole;
         }
         if (actorRole==null) {
@@ -355,17 +355,19 @@ public class LogLoader {
           if (timestamp.isAfter(performer.end))
             performer.end=timestamp;
         }
-        if (actorRole!=null)
-          performer.addRole(actorRole);
+        if (actorRole!=null && !actorRole.equals(performer.generalRole))
+          if (performer.generalRole==null)
+            performer.generalRole=actorRole;
+          else
+            if (Actor.rolePriorities!=null && Actor.rolePriorities.contains(actorRole) &&
+                (!Actor.rolePriorities.contains(performer.generalRole) ||
+                    Actor.rolePriorities.indexOf(performer.generalRole)>Actor.rolePriorities.indexOf(actorRole)))
+              performer.generalRole=actorRole;
         process.addActor(performer);
+        if (process.roleAssignments.get(performer.id)==null)
+          process.roleAssignments.put(performer.id,(actorRole!=null)?actorRole:performer.generalRole);
 
         ProcessThread thread=process.getOrCreateThread(performer,null);
-
-        // Determine which phase this action belongs to
-        if (aType.phaseName == null) continue;
-
-        Phase phase = phases.get(aType.phaseName);
-        if (phase == null) continue;
 
         // Add this action as a TaskInstance (minimal form)
         TaskInstance task = new TaskInstance();
@@ -376,28 +378,61 @@ public class LogLoader {
         task.actual = new TimeInterval(timestamp, timestamp);
 
         thread.addTask(task);
-        if (thread.getRole()==null)
-          thread.setRole(performer.getMainRole());
 
-        String targetActorId=null, targetActorRole=null;
+        String targetActorId=null, targetActorRole=aType.actorRole;
         boolean toAddNewThread=false;
 
-        if (action.toLowerCase().contains("assign") && param!=null && !param.isEmpty()) {
-          if (action.toLowerCase().contains(" as ")) {
-            int idx=action.toLowerCase().indexOf(" as ");
-            targetActorRole=action.substring(idx+4).trim();
-            targetActorId=param;
+        if (action.toLowerCase().contains("assign")){
+          String roleInProcess=null;
+          if (param!=null && !param.isEmpty()) {
+            if (action.toLowerCase().contains(" as ")) {
+              int idx=action.toLowerCase().indexOf(" as ");
+              roleInProcess=action.substring(idx+4).trim();
+              targetActorId=param;
+              process.roleAssignments.put(targetActorId,roleInProcess);
+            }
+            else
+              if (param.contains("(") && param.contains(")")) {
+                int p1 = param.indexOf('(');
+                int p2 = param.indexOf(')');
+                if (p1 > 0 && p2 > p1) {
+                  targetActorId = param.substring(0, p1).trim();
+                  roleInProcess = param.substring(p1 + 1, p2).trim();
+                  process.roleAssignments.put(targetActorId,roleInProcess);
+                }
+                if (p2+1<param.length()) {
+                  String sub=param.substring(p2+1).trim();
+                  if (sub.startsWith(";"))
+                    sub=sub.substring(1).trim();
+                  while ((p1 = sub.indexOf('('))>=0 && (p2 = sub.indexOf(')')) > p1) {
+                    String aId=sub.substring(0,p1).trim(), aRole=sub.substring(p1+1,p2).trim();
+                    process.roleAssignments.put(aId,aRole);
+                    if (p2+1>=sub.length())
+                      break;
+                    sub=sub.substring(p2+1).trim();
+                    if (sub.startsWith(";"))
+                      sub=sub.substring(1).trim();
+                  }
+                }
+              }
+            toAddNewThread= targetActorId!=null && roleInProcess!=null;
           }
           else
-            if (param.contains("(") && param.contains(")")) {
-              int p1 = param.indexOf('(');
-              int p2 = param.indexOf(')');
-              if (p1 > 0 && p2 > p1) {
-                targetActorId = param.substring(0, p1).trim();
-                targetActorRole = param.substring(p1 + 1, p2).trim();
-              }
+            if (action.toLowerCase().contains("clear all")) {
+              process.roleAssignments.clear();
             }
-          toAddNewThread= targetActorId!=null && targetActorRole!=null;
+        }
+        else
+        if (action.toLowerCase().contains("changes role")) {
+          if (param!=null && !param.isEmpty() && param.contains(" to ") && !process.roleAssignments.isEmpty()) {
+            int p=param.indexOf(" to ");
+            String role1=param.substring(0,p).trim(), role2=param.substring(p+4).trim();
+            for (Map.Entry<String,String> e:process.roleAssignments.entrySet())
+              if (e.getValue().equals(role1)) {
+                e.setValue(role2);
+                break;
+              }
+          }
         }
         else
         if (targetTypeCN>=0 && targetIdCN>=0 && targetTypeCN<fields.length && targetIdCN<fields.length) {
@@ -451,18 +486,19 @@ public class LogLoader {
           }
           if (targetActorRole==null)
             targetActorRole=aType.targetRole;
-          else
-            if (aType.targetRole==null)
-              aType.targetRole=targetActorRole;
-          if (targetActorRole!=null) {
-            targetActor.addRole(targetActorRole);
-            if (!targetActorRole.equalsIgnoreCase("any") &&
-                !actorRoles.contains(targetActorRole))
+          if (targetActorRole!=null && !targetActorRole.equals(targetActor.generalRole))
+            if (!actorRoles.contains(targetActorRole))
               actorRoles.add(targetActorRole);
-          }
+            if (targetActor.generalRole==null)
+              targetActor.generalRole=targetActorRole;
+            else
+            if (Actor.rolePriorities!=null && Actor.rolePriorities.contains(targetActorRole) &&
+                (!Actor.rolePriorities.contains(targetActor.generalRole) ||
+                    Actor.rolePriorities.indexOf(targetActor.generalRole)>Actor.rolePriorities.indexOf(targetActorRole)))
+              targetActor.generalRole=targetActorRole;
           task.actorsInvolved.add(targetActor);
           if (toAddNewThread)
-            process.getOrCreateThread(targetActor,targetActorRole);
+            process.getOrCreateThread(targetActor,null);
         }
             
       }
@@ -478,6 +514,18 @@ public class LogLoader {
     // Finalize all processes
     for (ProcessInstance pi : processes.values()) {
       pi.cleanAndSortThreads();
+      if (!pi.roleAssignments.isEmpty())
+        for (Map.Entry<String,String> e:pi.roleAssignments.entrySet()) {
+          ProcessThread th=pi.threads.get(e.getKey());
+          if (th!=null) {
+            th.role = e.getValue();
+            if (!actorRoles.contains(th.role))
+              actorRoles.add(th.role);
+            Actor a=actors.get(th.actor.id);
+            if (a!=null)
+              a.processRoleAssignments.put(pi.id,th.role);
+          }
+        }
     }
     return true;
   }

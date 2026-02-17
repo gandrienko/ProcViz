@@ -20,16 +20,6 @@ public class GlobalProcess {
     return processes;
   }
 
-  public Set<Actor> getActorsByRole(String role) {
-    Set<Actor> result = new HashSet<>();
-    for (Actor actor : actors.values()) {
-      if (role.equals(actor.getMainRole())) {
-        result.add(actor);
-      }
-    }
-    return result;
-  }
-
   public List<Actor> getActorsSorted(Collection<Actor> actors) {
     if (actors==null || actors.isEmpty())
       return null;
@@ -44,7 +34,7 @@ public class GlobalProcess {
       roleActors.clear();
       String role=actorRoles.get(rIdx);
       for (Actor actor : actors) {
-        if (role.equals(actor.getMainRole()) && !sortedActors.contains(actor))
+        if (role.equals(actor.generalRole) && !sortedActors.contains(actor))
           roleActors.add(actor);
       }
       Collections.sort(roleActors);
