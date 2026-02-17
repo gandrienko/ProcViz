@@ -26,6 +26,10 @@ public class Actor implements Comparable<Actor>{
     this.id = id;
   }
 
+  public boolean hasProcessRole(String role) {
+    return processRoleAssignments.containsValue(role);
+  }
+
   public int compareTo(Actor a) {
     if (a==null) return -1;
     if (start==null)

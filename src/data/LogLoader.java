@@ -356,13 +356,19 @@ public class LogLoader {
             performer.end=timestamp;
         }
         if (actorRole!=null && !actorRole.equals(performer.generalRole))
-          if (performer.generalRole==null)
-            performer.generalRole=actorRole;
+          if (performer.generalRole==null) {
+            //if (actorRole.equals("Paper Chair"))
+              //System.out.println(line);
+            performer.generalRole = actorRole;
+          }
           else
             if (Actor.rolePriorities!=null && Actor.rolePriorities.contains(actorRole) &&
                 (!Actor.rolePriorities.contains(performer.generalRole) ||
-                    Actor.rolePriorities.indexOf(performer.generalRole)>Actor.rolePriorities.indexOf(actorRole)))
-              performer.generalRole=actorRole;
+                    Actor.rolePriorities.indexOf(performer.generalRole)>Actor.rolePriorities.indexOf(actorRole))) {
+              //if (actorRole.equals("Paper Chair"))
+                //System.out.println(line);
+              performer.generalRole = actorRole;
+            }
         process.addActor(performer);
         if (process.roleAssignments.get(performer.id)==null)
           process.roleAssignments.put(performer.id,(actorRole!=null)?actorRole:performer.generalRole);
@@ -379,7 +385,7 @@ public class LogLoader {
 
         thread.addTask(task);
 
-        String targetActorId=null, targetActorRole=aType.actorRole;
+        String targetActorId=null, targetActorRole=null, tId2=null;
         boolean toAddNewThread=false;
 
         if (action.toLowerCase().contains("assign")){
@@ -407,6 +413,7 @@ public class LogLoader {
                   while ((p1 = sub.indexOf('('))>=0 && (p2 = sub.indexOf(')')) > p1) {
                     String aId=sub.substring(0,p1).trim(), aRole=sub.substring(p1+1,p2).trim();
                     process.roleAssignments.put(aId,aRole);
+                    tId2=aId;
                     if (p2+1>=sub.length())
                       break;
                     sub=sub.substring(p2+1).trim();
@@ -459,50 +466,67 @@ public class LogLoader {
             task.outcome=null;
         }
 
-        if (param!=null && aType.targetType!=null) {
-          if (aType.targetType.equalsIgnoreCase("actor"))
+        if (targetActorId==null && param!=null && aType.targetType!=null) {
+          if (aType.targetType.equalsIgnoreCase("actor")) {
             if (targetActorId == null) targetActorId = param;
             else ;
-          }
-          else
-          if (aType.targetType.equalsIgnoreCase("status"))
-            task.status=param;
-          else
-          if (aType.targetType.equalsIgnoreCase("outcome"))
-            task.outcome=param;
-
-        if (targetActorId!=null)  {
-          Actor targetActor = actors.get(targetActorId);
-          if (targetActor==null) {
-            targetActor=new Actor(targetActorId);
-            targetActor.start=targetActor.end=timestamp;
-            actors.put(targetActorId,targetActor);
-          }
-          else {
-            if (timestamp.isBefore(targetActor.start))
-              targetActor.start=timestamp;
-            if (timestamp.isAfter(targetActor.end))
-              targetActor.end=timestamp;
-          }
-          if (targetActorRole==null)
-            targetActorRole=aType.targetRole;
-          if (targetActorRole!=null && !targetActorRole.equals(targetActor.generalRole))
-            if (!actorRoles.contains(targetActorRole))
-              actorRoles.add(targetActorRole);
-            if (targetActor.generalRole==null)
-              targetActor.generalRole=targetActorRole;
-            else
-            if (Actor.rolePriorities!=null && Actor.rolePriorities.contains(targetActorRole) &&
-                (!Actor.rolePriorities.contains(targetActor.generalRole) ||
-                    Actor.rolePriorities.indexOf(targetActor.generalRole)>Actor.rolePriorities.indexOf(targetActorRole)))
-              targetActor.generalRole=targetActorRole;
-          task.actorsInvolved.add(targetActor);
-          if (toAddNewThread)
-            process.getOrCreateThread(targetActor,null);
+          } else if (aType.targetType.equalsIgnoreCase("status"))
+            task.status = param;
+          else if (aType.targetType.equalsIgnoreCase("outcome"))
+            task.outcome = param;
         }
+
+        if (targetActorId!=null)
+          for (int t=0; t<2; t++) {
+            Actor targetActor = actors.get(targetActorId);
+            if (targetActor==null) {
+              targetActor=new Actor(targetActorId);
+              targetActor.start=targetActor.end=timestamp;
+              actors.put(targetActorId,targetActor);
+            }
+            else {
+              if (timestamp.isBefore(targetActor.start))
+                targetActor.start=timestamp;
+              if (timestamp.isAfter(targetActor.end))
+                targetActor.end=timestamp;
+            }
+            if (targetActorRole==null) {
+              String role=process.roleAssignments.get(targetActorId);
+              if (role!=null && (role.equalsIgnoreCase("primary") ||
+                  role.equalsIgnoreCase("secondary")))
+                targetActorRole=targetActor.generalRole="PC Member";
+              if (targetActorRole==null)
+                targetActorRole = aType.targetRole;
+            }
+            if (targetActorRole!=null && !targetActorRole.equals(targetActor.generalRole))
+              if (!actorRoles.contains(targetActorRole))
+                actorRoles.add(targetActorRole);
+              if (targetActor.generalRole==null) {
+                //if (targetActorRole.equals("Paper Chair"))
+                  //System.out.println(line);
+                targetActor.generalRole = targetActorRole;
+              }
+              else
+              if (Actor.rolePriorities!=null && Actor.rolePriorities.contains(targetActorRole) &&
+                  (!Actor.rolePriorities.contains(targetActor.generalRole) ||
+                      Actor.rolePriorities.indexOf(targetActor.generalRole)>Actor.rolePriorities.indexOf(targetActorRole))) {
+                //if (targetActorRole.equals("Paper Chair"))
+                  //System.out.println(line);
+                targetActor.generalRole = targetActorRole;
+              }
+            task.actorsInvolved.add(targetActor);
+            if (toAddNewThread)
+              process.getOrCreateThread(targetActor,null);
+            if (tId2==null)
+              break;
+            if (t==0) {
+              targetActorId=tId2;
+              targetActorRole=null;
+            }
+          }
             
       }
-    } catch (Exception ex) {
+    } catch (IOException ex) {
       System.out.println(ex);
       System.out.println(line);
       return false;
@@ -511,6 +535,7 @@ public class LogLoader {
       System.out.println("Failed to load any process!!!");
       return false;
     }
+
     // Finalize all processes
     for (ProcessInstance pi : processes.values()) {
       pi.cleanAndSortThreads();
@@ -519,13 +544,23 @@ public class LogLoader {
           ProcessThread th=pi.threads.get(e.getKey());
           if (th!=null) {
             th.role = e.getValue();
-            if (!actorRoles.contains(th.role))
+            if (th.role!=null && !actorRoles.contains(th.role))
               actorRoles.add(th.role);
             Actor a=actors.get(th.actor.id);
+            if (th.role==null)
+              th.role=a.generalRole;
             if (a!=null)
               a.processRoleAssignments.put(pi.id,th.role);
           }
         }
+    }
+    for (Map.Entry<String, Actor> e:actors.entrySet()) {
+      Actor a=e.getValue();
+      if ((a.generalRole==null ||
+          (!a.generalRole.equalsIgnoreCase("Paper Chair") &&
+          !a.generalRole.equalsIgnoreCase("PC Member"))) &&
+          (a.hasProcessRole("primary") || a.hasProcessRole("secondary")))
+        a.generalRole="PC Member";
     }
     return true;
   }
