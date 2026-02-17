@@ -162,7 +162,8 @@ public class LogAnonymizer {
         Matcher emailMatcher = emailPattern.matcher(action);
         if (emailMatcher.find()) {
           String emailType = emailMatcher.group(1); // notification or invitation
-          action = "emails " + emailType + " to author";
+          if (emailType.equals("notification"))
+            action = "emails " + emailType + " to author";
         }
 
         // 3) Transform "changes role" actions
@@ -186,10 +187,13 @@ public class LogAnonymizer {
     // Pattern 1: assigns [Actor] as [Role]
     Pattern assignPattern = Pattern.compile("assigns (A\\d{4}) as (external|secondary|primary)", Pattern.CASE_INSENSITIVE);
 
-    // Pattern 2: set(s) decision to [Result]
+    // Pattern 2: emails invitation to [Actor]
+    Pattern invitePattern = Pattern.compile("emails invitation to (A\\d{4})", Pattern.CASE_INSENSITIVE);
+
+    // Pattern 3: set(s) decision to [Result]
     Pattern decisionPattern = Pattern.compile("sets? decision to (.*)", Pattern.CASE_INSENSITIVE);
 
-    // Pattern 3: Action (Parenthetical Result/Mode)
+    // Pattern 4: Action (Parenthetical Result/Mode)
     Pattern parenPattern = Pattern.compile("(.+?)\\s*\\((.+?)\\)", Pattern.CASE_INSENSITIVE);
 
     // State for deduplication
@@ -225,7 +229,7 @@ public class LogAnonymizer {
           }
 
           lastDecisionKey = currentKey;
-          action = "set decision";
+          action = "sets decision";
           params = decisionValue;
         } else {
           // Reset decision key if the current line isn't a decision
@@ -245,6 +249,13 @@ public class LogAnonymizer {
             if (parenMatcher.find()) {
               action = parenMatcher.group(1).trim();
               params = parenMatcher.group(2).trim();
+            }
+            else {
+              Matcher inviteMatcher=invitePattern.matcher(action);
+              if (inviteMatcher.find()) {
+                action="emails invitation";
+                params = inviteMatcher.group(1);
+              }
             }
           }
         }
