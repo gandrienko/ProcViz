@@ -124,6 +124,10 @@ public class ProcessTimelinePanel extends TimelinePanel{
 
       for (int i = 0; i < sortedThreads.size(); i++) {
         ProcessThread thread = sortedThreads.get(i);
+        TimeInterval tLife = thread.getLifetime();
+        int xStartThread = getXForTime(tLife.start, width);
+        int xEndThread = getXForTime(tLife.end, width);
+
         int y = y0 + i * actorLineSpacing + actorLineSpacing / 2;
         maxY = Math.max(maxY, y);
 
@@ -138,35 +142,39 @@ public class ProcessTimelinePanel extends TimelinePanel{
           }
         }
 
-        TaskInstance firstTask = thread.tasks.get(0);
-        int xFirstAction = getXForTime(firstTask.actual.start, width);
-
         // Coloring Logic
         if (isThreadSelected) {
           g.setColor(Color.black);
           // Pre-activity: Thin and Dashed
           g2d.setStroke(dashedStroke);
-          g.drawLine(xStartProcess, y, xFirstAction, y);
+          g.drawLine(xStartProcess, y, xStartThread, y);
           // Activity phase: Bold and Solid
           g2d.setStroke(highlightedStroke);
-          g.drawLine(xFirstAction, y, xEndProcess, y);
+          g.drawLine(xStartThread, y, xEndThread, y);
         } else {
           Color roleColor = actorRoleColors.getOrDefault(thread.role, Color.gray);
           g.setColor(roleColor);
           // Pre-activity: Thin and Dashed
           g2d.setStroke(dashedStroke);
-          g.drawLine(xStartProcess, y, xFirstAction, y);
+          g.drawLine(xStartProcess, y, xStartThread, y);
           // Activity phase: Thin and Solid
           g2d.setStroke(solidStroke);
-          g.drawLine(xFirstAction, y, xEndProcess, y);
+          g.drawLine(xStartThread, y, xEndThread, y);
         }
 
-        for (TaskInstance t : thread.tasks) {
+        for (int tIdx=0; tIdx<thread.tasks.size(); tIdx++) {
+          TaskInstance t=thread.tasks.get(tIdx);
+          if (tIdx+1<thread.tasks.size()) {
+            TaskInstance tNext=thread.tasks.get(tIdx+1);
+            if (getXForTime(tNext.actual.start,width)-getXForTime(t.actual.start,width)<=markRadius)
+              continue;
+          }
           drawTaskSymbol(g2d, t, width, y, p, fm);
         }
 
         Map<Rectangle, Actor> actorProcAreas = processActorAreas.computeIfAbsent(p.id, k -> new HashMap<>());
-        actorProcAreas.put(new Rectangle(xStartProcess, y - markRadius, xEndProcess - xStartProcess, markDiameter), thread.actor);
+        actorProcAreas.put(new Rectangle(xStartProcess, y - markRadius,
+            xEndThread - xStartProcess, markDiameter), thread.actor);
       }
 
       processAreas.put(new Rectangle(xStartProcess - 3, y0 - 3, xEndProcess - xStartProcess + 6, maxY - y0 + 6), p);
@@ -227,10 +235,6 @@ public class ProcessTimelinePanel extends TimelinePanel{
       }
 
       if (actorThreadContexts.isEmpty()) continue;
-      /*
-      if (actorThreadContexts.size()>1)
-        System.out.println("Actor "+actor.id+": N threads = "+actorThreadContexts.size());
-      */
 
       // 2. Order threads chronologically by the start date of the first action
       actorThreadContexts.sort(Comparator.comparing(tc -> tc.thread.tasks.get(0).actual.start));
@@ -240,8 +244,12 @@ public class ProcessTimelinePanel extends TimelinePanel{
 
       // Calculate the leftmost start point to place the vertical grouping line
       for (ThreadContext tc : actorThreadContexts) {
-        int xPStart = getXForTime(tc.process.getProcessLifetime().start, width);
-        if (xPStart < minActorX) minActorX = xPStart;
+        TimeInterval tint=tc.process.getProcessLifetime();
+        int xStart = getXForTime(tint.start, width);
+        if (xStart < minActorX) minActorX = xStart;
+        tint=tc.thread.getLifetime();
+        int xEnd=getXForTime(tint.end, width);
+        if (xEnd>maxActorX) maxActorX=xEnd;
       }
 
       // 3. Draw vertical grouping line (similar to paintByProcesses)
@@ -254,17 +262,13 @@ public class ProcessTimelinePanel extends TimelinePanel{
       // 4. Draw each thread line
       for (int i = 0; i < actorThreadContexts.size(); i++) {
         ThreadContext tc = actorThreadContexts.get(i);
-        ProcessInstance p = tc.process;
         ProcessThread thread = tc.thread;
         int y = y0 + i * actorLineSpacing + actorLineSpacing / 2;
         currentY = y;
 
-        TimeInterval pLife = p.getProcessLifetime();
-        int xPStart = getXForTime(pLife.start, width);
-        int xPEnd = getXForTime(pLife.end, width);
-        int xFirstAction = getXForTime(thread.tasks.get(0).actual.start, width);
-
-        if (xPEnd > maxActorX) maxActorX = xPEnd;
+        TimeInterval tLife = thread.getLifetime();
+        int xStartThread = getXForTime(tLife.start, width);
+        int xEndThread = getXForTime(tLife.end, width);
 
         // Determine Selection
         boolean isThreadSelected = false;
@@ -281,26 +285,32 @@ public class ProcessTimelinePanel extends TimelinePanel{
         if (isThreadSelected) {
           g.setColor(Color.black);
           g2d.setStroke(dashedStroke);
-          g.drawLine(xPStart, y, xFirstAction, y);
+          g.drawLine(minActorX, y, xStartThread, y);
           g2d.setStroke(highlightedStroke);
-          g.drawLine(xFirstAction, y, xPEnd, y);
+          g.drawLine(xStartThread, y, xEndThread, y);
         } else {
           Color roleColor = actorRoleColors.getOrDefault(thread.role, Color.gray);
           g.setColor(roleColor);
           g2d.setStroke(dashedStroke);
-          g.drawLine(xPStart, y, xFirstAction, y);
+          g.drawLine(minActorX, y, xStartThread, y);
           g2d.setStroke(solidStroke);
-          g.drawLine(xFirstAction, y, xPEnd, y);
+          g.drawLine(xStartThread, y, xEndThread, y);
         }
 
         // Draw tasks
-        for (TaskInstance t : thread.tasks) {
-          drawTaskSymbol(g2d, t, width, y, p, fm);
+        for (int tIdx=0; tIdx<thread.tasks.size(); tIdx++) {
+          TaskInstance t=thread.tasks.get(tIdx);
+          if (tIdx+1<thread.tasks.size()) {
+            TaskInstance tNext=thread.tasks.get(tIdx+1);
+            if (getXForTime(tNext.actual.start,width)-getXForTime(t.actual.start,width)<=markRadius)
+              continue;
+          }
+          drawTaskSymbol(g2d, t, width, y, tc.process, fm);
         }
 
         // Map areas for tooltips
-        Map<Rectangle, Actor> actorProcAreas = processActorAreas.computeIfAbsent(p.id, k -> new HashMap<>());
-        actorProcAreas.put(new Rectangle(xPStart, y - markRadius, xPEnd - xPStart, markDiameter), actor);
+        Map<Rectangle, Actor> actorProcAreas = processActorAreas.computeIfAbsent(tc.process.id, k -> new HashMap<>());
+        actorProcAreas.put(new Rectangle(minActorX, y - markRadius, maxActorX - minActorX, markDiameter), actor);
       }
 
       // Map global actor area

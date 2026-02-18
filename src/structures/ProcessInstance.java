@@ -68,24 +68,14 @@ public class ProcessInstance {
     LocalDateTime latestEnd = null;
 
     for (Map.Entry<String, ProcessThread> e:threads.entrySet()) {
-      ProcessThread th=e.getValue();
-      for (TaskInstance task : th.tasks) {
-        if (task.actual != null) {
-          LocalDateTime start = task.actual.start;
-          LocalDateTime end = task.actual.end;
-
-          if (start != null) {
-            if (earliestStart == null || start.isBefore(earliestStart)) {
-              earliestStart = start;
-            }
-          }
-
-          if (end != null) {
-            if (latestEnd == null || end.isAfter(latestEnd)) {
-              latestEnd = end;
-            }
-          }
-        }
+      TimeInterval tint=e.getValue().getLifetime();
+      if (tint==null)
+        continue;
+      if (earliestStart == null || tint.start.isBefore(earliestStart)) {
+        earliestStart = tint.start;
+      }
+      if (latestEnd == null || tint.end.isAfter(latestEnd)) {
+        latestEnd = tint.end;
       }
     }
 
