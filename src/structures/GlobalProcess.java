@@ -60,6 +60,20 @@ public class GlobalProcess {
     return phaseList;
   }
 
+  public LocalDate[] getPhaseDatesRange() {
+    if (phases==null || phases.isEmpty())
+      return null;
+    LocalDate d1=null, d2=null;
+    for (Phase phase:phases.values()) {
+      if (d1==null || d1.isAfter(phase.startDate))
+        d1=phase.startDate;
+      if (d2==null || d2.isBefore(phase.endDate))
+        d2=phase.endDate;
+    }
+    LocalDate range[]={d1,d2};
+    return range;
+  }
+
   public List<ProcessInstance> getProcessesByEndTimeDescending() {
     List<ProcessInstance> sortedList = new ArrayList<>(processes);
 

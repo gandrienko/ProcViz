@@ -15,4 +15,5 @@ public class TaskInstance {
   public String outcome=null;
   public TimeInterval scheduled;
   public TimeInterval actual;
+  public boolean isDelayed=false;
 }

@@ -1,8 +1,10 @@
 package viz;
 
+import data.StatusChecker;
 import structures.*;
 
 import java.awt.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -12,6 +14,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
   public static int markRadius=4, markDiameter=markRadius*2, actorLineSpacing=8;
   public static int PROCESS_MODE=1, ACTOR_MODE=2;
   public static int SYMBOL_DOT=0, SYMBOL_CHAR=1;
+  public static Color taskSymbolColor=Color.green.darker(), delayedTaskColor=Color.red.darker();
   
   public GlobalProcess gProc=null;
   private SelectionManager selectionManager=null;
@@ -23,7 +26,6 @@ public class ProcessTimelinePanel extends TimelinePanel{
   protected Map<Rectangle,Actor> actorAreas=null;
   protected Map<String,Map<Rectangle,TaskInstance>> processTaskAreas=null;
   protected Map<String, Color> actorRoleColors=null;
-  protected Map<String, Color> actionTypeColors=null;
 
   // Define the dashed stroke for "inactive" periods
   private final float[] dashPattern = {3.0f, 2.0f};
@@ -38,7 +40,6 @@ public class ProcessTimelinePanel extends TimelinePanel{
     this.selectionManager=selectionManager;
     actorRoleColors=Utils.generateItemColors(gProc.actorRoles);
     ArrayList<String> actionTypes=new ArrayList<String>(gProc.actionTypes.keySet());
-    actionTypeColors=Utils.generateItemColors(actionTypes);
     setPreferredSize(new Dimension(1200, 100 + gProc.processes.size() * actorLineSpacing*10));
     if (selectionManager!=null)
       selectionManager.addListener(() -> {
@@ -105,19 +106,37 @@ public class ProcessTimelinePanel extends TimelinePanel{
     clearAreaMaps();
     int y0 = yTop + 2 * actorLineSpacing;
 
+    StatusChecker checker=(gProc.phases!=null && !gProc.phases.isEmpty())?new StatusChecker(gProc):null;
+
     for (ProcessInstance p : gProc.processes) {
       TimeInterval pLife = p.getProcessLifetime();
       int xStartProcess = getXForTime(pLife.start, width);
       int xEndProcess = getXForTime(pLife.end, width);
 
       List<ProcessThread> sortedThreads = new ArrayList<>(p.threads.values());
-      int maxY = y0;
+      int vLineHeight = (sortedThreads.size() - 1) * actorLineSpacing;
+      int maxY = y0+vLineHeight;
+
+      if (checker!=null) {
+        for (Phase ph:gProc.phases.values()) {
+          LocalDate d=checker.getPhaseCompletenessDate(ph,p);
+          if (d!=null && d.isAfter(ph.endDate)) {
+            int x2=getXForTime(d.atTime(23,59,59),width),
+                x1=getXForTime(ph.endDate.atTime(23,59,59),width);
+            if (x2>x1) {
+              Color c=phaseColors.get(ph.name);
+              c=new Color(c.getRed(),c.getGreen(),c.getBlue(),128);
+              g2d.setColor(c);
+              g2d.fillRect(x1,y0,x2-x1,vLineHeight+actorLineSpacing);
+            }
+          }
+        }
+      }
 
       // Vertical initiation line
       if (!sortedThreads.isEmpty()) {
         g.setColor(Color.darkGray);
         g2d.setStroke(defaultStroke);
-        int vLineHeight = (sortedThreads.size() - 1) * actorLineSpacing;
         g.drawLine(xStartProcess, y0 + actorLineSpacing / 2,
             xStartProcess, y0 + actorLineSpacing / 2 + vLineHeight);
       }
@@ -164,7 +183,13 @@ public class ProcessTimelinePanel extends TimelinePanel{
 
         for (int tIdx=0; tIdx<thread.tasks.size(); tIdx++) {
           TaskInstance t=thread.tasks.get(tIdx);
-          if (tIdx+1<thread.tasks.size()) {
+          if (tIdx>0) {
+            TaskInstance tPrev=thread.tasks.get(tIdx-1);
+            if (tPrev.isDelayed &&
+                getXForTime(t.actual.start,width)-getXForTime(tPrev.actual.start,width)<=markRadius)
+              continue;
+          }
+          if (!t.isDelayed && tIdx+1<thread.tasks.size()) {
             TaskInstance tNext=thread.tasks.get(tIdx+1);
             if (getXForTime(tNext.actual.start,width)-getXForTime(t.actual.start,width)<=markRadius)
               continue;
@@ -193,8 +218,9 @@ public class ProcessTimelinePanel extends TimelinePanel{
     if (isSelected) {
       g2d.setColor(Color.black);
     } else {
-      Color symColor = actionTypeColors.getOrDefault(t.actionType, Color.gray);
-      g2d.setColor(Utils.toSaturated(symColor));
+      //Color symColor = actionTypeColors.getOrDefault(t.actionType, Color.gray);
+      //g2d.setColor(Utils.toSaturated(symColor));
+      g2d.setColor((t.isDelayed)?delayedTaskColor:taskSymbolColor);
     }
 
     ActionType aType = gProc.actionTypes.get(t.actionType);
@@ -300,7 +326,13 @@ public class ProcessTimelinePanel extends TimelinePanel{
         // Draw tasks
         for (int tIdx=0; tIdx<thread.tasks.size(); tIdx++) {
           TaskInstance t=thread.tasks.get(tIdx);
-          if (tIdx+1<thread.tasks.size()) {
+          if (tIdx>0) {
+            TaskInstance tPrev=thread.tasks.get(tIdx-1);
+            if (tPrev.isDelayed &&
+                getXForTime(t.actual.start,width)-getXForTime(tPrev.actual.start,width)<=markRadius)
+              continue;
+          }
+          if (!t.isDelayed && tIdx+1<thread.tasks.size()) {
             TaskInstance tNext=thread.tasks.get(tIdx+1);
             if (getXForTime(tNext.actual.start,width)-getXForTime(t.actual.start,width)<=markRadius)
               continue;
@@ -404,7 +436,10 @@ public class ProcessTimelinePanel extends TimelinePanel{
       if (t.actorsInvolved.size() > 1)
         for (int i = 1; i < t.actorsInvolved.size(); i++) {
           Actor a = t.actorsInvolved.get(i);
-          text += String.format("<br>Involved actor: <b>%s</b>",a.id);
+          String r=p.roleAssignments.get(a.id);
+          if (r==null)
+            r=a.generalRole;
+          text += String.format("<br>Involved actor: <b>%s as %s</b>",a.id,r);
         }
     }
     if (t.status != null)

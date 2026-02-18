@@ -1,12 +1,9 @@
 import data.LogLoader;
-import structures.ActionType;
-import structures.Actor;
-import structures.GlobalProcess;
+import data.StatusChecker;
+import structures.*;
 import viz.*;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -126,6 +123,11 @@ public class Main {
         System.err.println("Error reading the log file: " + e.getMessage());
       }
       if (gProc.phases!=null && !gProc.phases.isEmpty()) {
+        StatusChecker checker=new StatusChecker(gProc);
+        for (ProcessInstance pi:gProc.processes)
+          for (Phase ph:gProc.phases.values())
+            checker.getPhaseCompletenessDate(ph,pi);
+
         ProcessTimelinePanel processMainPanel = new ProcessTimelinePanel(gProc,new SelectionManager());
 
         int origPrefWidth=processMainPanel.getPreferredSize().width;
@@ -300,20 +302,15 @@ public class Main {
         frame.setSize(frame.getWidth(), 850);
         frame.setVisible(true);
 
-        ActionOverviewPanel overviewPanel = new ActionOverviewPanel(gProc, processMainPanel.getSelectionManager());
+        //temporarily off
         /*
-        JScrollPane scrollPaneActions = new JScrollPane(overviewPanel);
-        scrollPaneActions.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-        scrollPaneActions.getVerticalScrollBar().setUnitIncrement(16);
-        */
-
-// Example: Add to a side panel or new Frame
+        ActionOverviewPanel overviewPanel = new ActionOverviewPanel(gProc, processMainPanel.getSelectionManager());
         JFrame overviewFrame = new JFrame("Actions Overview");
         overviewFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        //overviewFrame.add(scrollPaneActions);
         overviewFrame.add(overviewPanel);
         overviewFrame.setSize(1000, 600);
         overviewFrame.setVisible(true);
+        */
       }
     }
 
