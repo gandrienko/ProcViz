@@ -10,7 +10,6 @@ import java.util.*;
 public class ProcessInstance {
   public String id;
   public String type; // e.g., submission, PC member, chair, etc.
-  public Set<Actor> actors = new HashSet<>();
 
   // Assignments of actor IDs to roles in this process instance
   public Map<String,String> roleAssignments=new LinkedHashMap<>();
@@ -29,7 +28,7 @@ public class ProcessInstance {
   public ProcessThread getOrCreateThread(Actor actor, String role) {
     ProcessThread t = threads.get(actor.id);
     if (t == null) {
-      t = new ProcessThread(actor, role);
+      t = new ProcessThread(id, actor, role);
       threads.put(actor.id, t);
     } else if (role != null) {
       t.role = role; // Update role if a specific assignment is found later
@@ -64,41 +63,10 @@ public class ProcessInstance {
     }
   }
 
-  public void addActor(Actor actor) {
-    if (actor==null || actor.id==null)
-      return;
-    for (Actor a:actors)
-      if (a.id.equals(actor.id))
-        return; //already there
-    actors.add(actor);
-  }
-
   public TimeInterval getProcessLifetime() {
     LocalDateTime earliestStart = null;
     LocalDateTime latestEnd = null;
 
-    /*
-    for (StateInstance state : states) {
-      for (TaskInstance task : state.tasks) {
-        if (task.actual != null) {
-          LocalDateTime start = task.actual.start;
-          LocalDateTime end = task.actual.end;
-
-          if (start != null) {
-            if (earliestStart == null || start.isBefore(earliestStart)) {
-              earliestStart = start;
-            }
-          }
-
-          if (end != null) {
-            if (latestEnd == null || end.isAfter(latestEnd)) {
-              latestEnd = end;
-            }
-          }
-        }
-      }
-    }
-    */
     for (Map.Entry<String, ProcessThread> e:threads.entrySet()) {
       ProcessThread th=e.getValue();
       for (TaskInstance task : th.tasks) {

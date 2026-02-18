@@ -4,11 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ProcessThread {
+  public String processID; // ID of the process that includes this thread
   public Actor actor;
   public String role; // Local role: e.g., "primary", "secondary", "external"
   public List<TaskInstance> tasks = new ArrayList<>();
 
-  public ProcessThread(Actor actor, String role) {
+  public ProcessThread(String processId, Actor actor, String role) {
+    this.processID=processId;
     this.actor = actor;
     this.role = role;
   }

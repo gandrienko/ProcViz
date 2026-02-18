@@ -369,7 +369,6 @@ public class LogLoader {
                 //System.out.println(line);
               performer.generalRole = actorRole;
             }
-        process.addActor(performer);
         if (process.roleAssignments.get(performer.id)==null)
           process.roleAssignments.put(performer.id,(actorRole!=null)?actorRole:performer.generalRole);
 
@@ -561,6 +560,16 @@ public class LogLoader {
           !a.generalRole.equalsIgnoreCase("PC Member"))) &&
           (a.hasProcessRole("primary") || a.hasProcessRole("secondary")))
         a.generalRole="PC Member";
+      if (a.generalRole!=null && a.generalRole.equalsIgnoreCase("Paper Chair"))
+        for (Map.Entry<String,String> r:a.processRoleAssignments.entrySet())
+          if (!r.getValue().equals(a.generalRole)) {
+            r.setValue(a.generalRole);
+            ProcessInstance pi=processes.get(r.getKey());
+            pi.roleAssignments.put(a.id,a.generalRole);
+            ProcessThread th=pi.threads.get(a.id);
+            if (th!=null)
+              th.role=a.generalRole;
+          }
     }
     return true;
   }
