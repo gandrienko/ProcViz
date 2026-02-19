@@ -90,6 +90,12 @@ public class TimelinePanel extends JPanel {
     });
   }
 
+  protected int getXForTime(LocalDateTime time, int width) {
+    if (time == null) return 0;
+    long secondsFromStart = ChronoUnit.SECONDS.between(minDate, time);
+    return (int) ((secondsFromStart * width) / (double) totalDuration);
+  }
+
   public Phase getPhaseForPoint(Point pt) {
     if (pt==null)
       return null;
@@ -129,13 +135,8 @@ public class TimelinePanel extends JPanel {
 
     for (int i = 0; i < phases.size(); i++) {
       Phase p = phases.get(i);
-      LocalDateTime t1=p.startDate.atStartOfDay(),
-          t2=p.endDate.atTime(23,59,59);
-      long secondsFromStart = ChronoUnit.SECONDS.between(minDate,t1);
-      long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,t2);
-
-      int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
-      int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
+      int x1 = getXForTime(p.startDate.atStartOfDay(),width);
+      int x2 = getXForTime(p.endDate.atTime(23,59,59),width);
 
       g2d.setColor(Color.white);
       g2d.fillRect(x1, y0, width-x1+1, textHeight);
@@ -159,13 +160,8 @@ public class TimelinePanel extends JPanel {
 
     for (int i = 0; i < phases.size(); i++) {
       Phase p = phases.get(i);
-      LocalDateTime t1=p.startDate.atStartOfDay(),
-          t2=p.endDate.atTime(23,59,59);
-      long secondsFromStart = ChronoUnit.SECONDS.between(minDate,t1);
-      long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,t2);
-
-      int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
-      int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
+      int x1 = getXForTime(p.startDate.atStartOfDay(),width);
+      int x2 = getXForTime(p.endDate.atTime(23,59,59),width);
 
       g2d.setColor(Color.white);
       g2d.fillRect(x1, y0, width-x1+1, textHeight);
@@ -213,13 +209,8 @@ public class TimelinePanel extends JPanel {
 
     for (int i = 0; i < phases.size(); i++) {
       Phase p = phases.get(i);
-      LocalDateTime t1=p.startDate.atStartOfDay(),
-          t2=p.endDate.atTime(23,59,59);
-      long secondsFromStart = ChronoUnit.SECONDS.between(minDate,t1);
-      long secondsFromStart2 = ChronoUnit.SECONDS.between(minDate,t2);
-
-      int x1 = (int) ((secondsFromStart * width) / (double) totalDuration);
-      int x2 = (int) ((secondsFromStart2 * width) / (double) totalDuration);
+      int x1 = getXForTime(p.startDate.atStartOfDay(),width);
+      int x2 = getXForTime(p.endDate.atTime(23,59,59),width);
   
       g2d.setColor(Color.white);
       g2d.fillRect(x1, yTop, width-x1+1, sectionHeight);
@@ -231,30 +222,10 @@ public class TimelinePanel extends JPanel {
       g2d.drawRect(x1, yTop, x2-x1, sectionHeight);
       Rectangle r=new Rectangle(x1,yTop,x2-x1,sectionHeight);
       phaseAreas.put(r,p);
-
-      /*
-      g2d.setColor(Color.BLACK);
-      g2d.drawString(p.name, x1 + 5, yTop + fontHeight);
-  
-      g2d.setColor(Color.white);
-      g2d.fillRect(x1-5,yBottom + 1,width-x1+5,fontHeight);
-      g2d.setColor(Color.BLACK);
-      g2d.drawLine(x1, yBottom, x1, yBottom + 5);
-      g2d.drawString(p.startDate.format(formatter), x1 + 2, yBottom+fontHeight);
-      */
     }
 
     // Draw timeline axis
     g2d.setColor(Color.gray);
     g2d.drawLine(0, yTop + sectionHeight, width, yTop + sectionHeight);
-    /*
-    String endStr=maxDate.format(formatter);
-    int x=width-g2d.getFontMetrics().stringWidth(endStr)-3;
-    g2d.setColor(Color.white);
-    g2d.fillRect(x-3,yTop + sectionHeight + 1,width-x+3,height-sectionHeight-1);
-    g2d.setColor(Color.BLACK);
-    g2d.drawString(endStr,x,yBottom+fontHeight);
-    g2d.drawLine(width-1, yBottom, width-1, yBottom + 5);
-    */
   }
 }

@@ -60,6 +60,15 @@ public class GlobalProcess {
     return phaseList;
   }
 
+  public Phase getPhaseForDate(LocalDate d) {
+    if (phases==null || d==null)
+      return null;
+    for (Phase phase:phases.values())
+      if (phase.contains(d))
+        return phase;
+    return null;
+  }
+
   public LocalDate[] getPhaseDatesRange() {
     if (phases==null || phases.isEmpty())
       return null;

@@ -309,6 +309,26 @@ public class Main {
         overviewFrame.setSize(1000, 600);
         overviewFrame.setVisible(true);
         */
+
+        // 1. Initialize the panels
+        PhaseCompletenessOverviewPanel completenessPanel = new PhaseCompletenessOverviewPanel(gProc);
+        ActionOverviewPanel overviewPanel = new ActionOverviewPanel(gProc, processMainPanel.getSelectionManager());
+
+        // 2. Create the Split Pane
+        // VERTICAL_SPLIT places the first component on top and the second on the bottom
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, completenessPanel, overviewPanel);
+
+        // 3. Configure Split Pane behavior
+        splitPane.setDividerLocation(250); // Set initial height of the upper panel in pixels
+        splitPane.setContinuousLayout(true);
+        splitPane.setOneTouchExpandable(true);
+
+        // 4. Setup the Frame
+        JFrame overviewFrame = new JFrame("Process Overview & Phase Completeness");
+        overviewFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        overviewFrame.add(splitPane);
+        overviewFrame.setSize(1000, 850); // Increased height slightly to accommodate both
+        overviewFrame.setVisible(true);
       }
     }
 

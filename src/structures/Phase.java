@@ -17,4 +17,8 @@ public class Phase {
   public boolean contains(LocalDateTime timestamp) {
     return !timestamp.toLocalDate().isBefore(startDate) && !timestamp.toLocalDate().isAfter(endDate);
   }
+
+  public boolean contains(LocalDate date) {
+    return !date.isBefore(startDate) && !date.isAfter(endDate);
+  }
 }

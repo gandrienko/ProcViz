@@ -85,12 +85,6 @@ public class ProcessTimelinePanel extends TimelinePanel{
     revalidate(); // Notify the scroll pane that the size has changed
   }
 
-  private int getXForTime(LocalDateTime time, int width) {
-    if (time == null) return 0;
-    long secondsFromStart = ChronoUnit.SECONDS.between(minDate, time);
-    return (int) ((secondsFromStart * width) / (double) totalDuration);
-  }
-
   private void clearAreaMaps() {
     if (processAreas == null) processAreas = new HashMap<>(); else processAreas.clear();
     if (processTaskAreas == null) processTaskAreas = new HashMap<>(); else processTaskAreas.clear();
