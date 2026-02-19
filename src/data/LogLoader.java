@@ -430,14 +430,53 @@ public class LogLoader {
         }
         else
         if (action.toLowerCase().contains("changes role")) {
+          task.outcome=param;
           if (param!=null && !param.isEmpty() && param.contains(" to ") && !process.roleAssignments.isEmpty()) {
             int p=param.indexOf(" to ");
             String role1=param.substring(0,p).trim(), role2=param.substring(p+4).trim();
-            for (Map.Entry<String,String> e:process.roleAssignments.entrySet())
-              if (e.getValue().equals(role1)) {
-                e.setValue(role2);
-                break;
+            if (GlobalProcess.isPCMemberRole(role1) && GlobalProcess.isPCMemberRole(role2)) {
+              //role exchange between primary and secondary
+              //check if the previous task was also role exchange
+              boolean doExchange=true;
+              if (thread.tasks.size()>1) {
+                TaskInstance prevTask=thread.tasks.get(thread.tasks.size()-2);
+                if (prevTask.actionType.toLowerCase().contains("changes role") && prevTask.outcome!=null &&
+                    prevTask.outcome.contains(" to ")) {
+                  p=prevTask.outcome.indexOf(" to ");
+                  String prevRole1=prevTask.outcome.substring(0,p).trim(),
+                      prevRole2=prevTask.outcome.substring(p+4).trim();
+                  doExchange=!(prevRole1.equals(role2) && prevRole2.equals(role1)); //ignore the second exchange
+                }
               }
+              if (doExchange) {
+                String aId1=null, aId2=null;
+                for (Map.Entry<String,String> e:process.roleAssignments.entrySet())
+                  if (e.getValue().equals(role1))
+                    aId1=e.getKey();
+                  else
+                  if (e.getValue().equals(role2))
+                    aId2=e.getKey();
+                if (aId1!=null && aId2!=null) {
+                  process.roleAssignments.put(aId1,role2);
+                  process.roleAssignments.put(aId2,role1);
+                }
+              }
+            }
+            else {
+              ProcessThread roleThread = null;
+              for (ProcessThread th : process.threads.values()) {
+                String tRole = process.roleAssignments.get(th.actor.id);
+                if (tRole != null && tRole.equals(role1))
+                  if (roleThread == null || roleThread.tasks.isEmpty())
+                    roleThread = th;
+                  else
+                  if (th.tasks.isEmpty() || roleThread.getLifetime().start.isBefore(th.getLifetime().start))
+                    roleThread = th;
+              }
+              if (roleThread != null) {
+                process.roleAssignments.put(roleThread.actor.id, role2);
+              }
+            }
           }
         }
         else

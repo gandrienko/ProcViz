@@ -14,7 +14,8 @@ public class ProcessTimelinePanel extends TimelinePanel{
   public static int markRadius=4, markDiameter=markRadius*2, actorLineSpacing=8;
   public static int PROCESS_MODE=1, ACTOR_MODE=2;
   public static int SYMBOL_DOT=0, SYMBOL_CHAR=1;
-  public static Color taskSymbolColor=Color.green.darker(), delayedTaskColor=Color.red.darker();
+  public static Color taskSymbolColor=new Color(60,60,255,160),
+      delayedTaskColor=Color.red.darker();
   
   public GlobalProcess gProc=null;
   private SelectionManager selectionManager=null;

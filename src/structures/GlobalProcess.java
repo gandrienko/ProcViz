@@ -120,4 +120,42 @@ public class GlobalProcess {
       }
     }
     return tasksMap;
-  }}
+  }
+
+  public static boolean isPaperChairRole(String role) {
+    if (role==null)
+      return false;
+    return role.equalsIgnoreCase("paper chair");
+  }
+
+  public static boolean isPrimaryRole(String role) {
+    if (role==null)
+      return false;
+    role=role.toLowerCase();
+    return role.equals("primary") || role.equals("coordinator");
+  }
+
+  public static boolean isSecondaryRole(String role) {
+    if (role==null)
+      return false;
+    role=role.toLowerCase();
+    return role.equals("secondary") ||
+        role.equals("committee member") || role.equals("pc member");
+  }
+
+  public static boolean isPCMemberRole(String role) {
+    if (role==null)
+      return false;
+    role=role.toLowerCase();
+    return role.equals("primary") || role.equals("secondary") || role.equals("coordinator") ||
+        role.equals("committee member") || role.equals("pc member");
+  }
+
+  public static boolean isExternalRole(String role) {
+    if (role==null)
+      return false;
+    role=role.toLowerCase();
+    return role.contains("external") || role.contains("reviewer");
+  }
+
+}
