@@ -106,8 +106,6 @@ public class ProcessTimelinePanel extends TimelinePanel{
     clearAreaMaps();
     int y0 = yTop + 2 * actorLineSpacing;
 
-    StatusChecker checker=(gProc.phases!=null && !gProc.phases.isEmpty())?new StatusChecker(gProc):null;
-
     for (ProcessInstance p : gProc.processes) {
       TimeInterval pLife = p.getProcessLifetime();
       int xStartProcess = getXForTime(pLife.start, width);
@@ -117,9 +115,9 @@ public class ProcessTimelinePanel extends TimelinePanel{
       int vLineHeight = (sortedThreads.size() - 1) * actorLineSpacing;
       int maxY = y0+vLineHeight;
 
-      if (checker!=null) {
+      if (p.hasPhaseCompletenessDates()) {
         for (Phase ph:gProc.phases.values()) {
-          LocalDate d=checker.getPhaseCompletenessDate(ph,p);
+          LocalDate d=p.getPhaseCompletenessDate(ph.name);
           if (d!=null && d.isAfter(ph.endDate)) {
             int x2=getXForTime(d.atTime(23,59,59),width),
                 x1=getXForTime(ph.endDate.atTime(23,59,59),width);

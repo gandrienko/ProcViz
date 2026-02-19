@@ -124,9 +124,7 @@ public class Main {
       }
       if (gProc.phases!=null && !gProc.phases.isEmpty()) {
         StatusChecker checker=new StatusChecker(gProc);
-        for (ProcessInstance pi:gProc.processes)
-          for (Phase ph:gProc.phases.values())
-            checker.getPhaseCompletenessDate(ph,pi);
+        checker.determinePhaseCompletenessDates();
 
         ProcessTimelinePanel processMainPanel = new ProcessTimelinePanel(gProc,new SelectionManager());
 

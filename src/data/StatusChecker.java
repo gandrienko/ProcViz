@@ -4,6 +4,7 @@ import structures.*;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static java.time.temporal.ChronoUnit.DAYS;
@@ -19,6 +20,31 @@ public class StatusChecker {
   public StatusChecker(GlobalProcess gProc) {
     this.gProc=gProc;
   }
+
+  /**
+   * Goes through all process instances and records for each process instance when it completed different phases.
+   * Returns true if successfully done.
+   */
+  public boolean determinePhaseCompletenessDates(){
+    if (gProc==null || gProc.phases==null || gProc.phases.isEmpty() ||
+        gProc.processes==null || gProc.processes.isEmpty() ||
+        gProc.actors==null || gProc.actors.isEmpty())
+      return false;
+    int nDatesGot=0;
+    for (ProcessInstance pi:gProc.processes) {
+      if (pi.threads==null || pi.threads.isEmpty())
+        continue;
+      for (Phase phase:gProc.phases.values()) {
+        LocalDate d=getPhaseCompletenessDate(phase,pi);
+        if (d==null) continue;
+        if (pi.phaseDone==null)
+          pi.phaseDone=new LinkedHashMap<>(Math.round(gProc.phases.size()*1.5f));
+        pi.phaseDone.put(phase.name,d);
+      }
+    }
+    return nDatesGot>0;
+  }
+
   /**
    * Checks the phase completeness status of the given process instance by days.
    * Returns a boolean array by days.

@@ -1,5 +1,6 @@
 package structures;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -16,6 +17,9 @@ public class ProcessInstance {
 
   // Map of Actor ID to their specific ProcessThread
   public Map<String, ProcessThread> threads = new LinkedHashMap<>();
+
+  // By what date each phase is completed in this process. Key: phase name
+  public Map<String, LocalDate> phaseDone=null;
 
   public ProcessInstance(String id) {
     this.id = id;
@@ -83,5 +87,15 @@ public class ProcessInstance {
       return new TimeInterval(earliestStart,latestEnd);
 
     return null;
+  }
+
+  public boolean hasPhaseCompletenessDates () {
+    return phaseDone!=null && !phaseDone.isEmpty();
+  }
+
+  public LocalDate getPhaseCompletenessDate(String phaseName) {
+    if (phaseDone==null)
+      return null;
+    return phaseDone.get(phaseName);
   }
 }
