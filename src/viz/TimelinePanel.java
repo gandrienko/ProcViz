@@ -155,36 +155,95 @@ public class TimelinePanel extends JPanel {
     if (phases == null || phases.isEmpty()) return;
 
     Graphics2D g2d = (Graphics2D) g;
+    FontMetrics fm = g2d.getFontMetrics();
     int width = getWidth();
-    int y0=(textHeight-g2d.getFontMetrics().getHeight())/2;
+    int ascent = fm.getAscent();
+    int y0 = (textHeight - fm.getHeight()) / 2;
+    int horizontalPadding = 10; // Minimum pixel gap between labels
 
-    for (int i = 0; i < phases.size(); i++) {
-      Phase p = phases.get(i);
-      int x1 = getXForTime(p.startDate.atStartOfDay(),width);
-      int x2 = getXForTime(p.endDate.atTime(23,59,59),width);
+    // --- 1. PRE-CALCULATE FIRST AND LAST DATE PROPERTIES ---
+    // Last Date (Must always be visible)
+    String lastDateStr = maxDate.format(formatter);
+    int lastDateWidth = fm.stringWidth(lastDateStr);
+    int lastDateX = width - lastDateWidth - 3;
+
+    // First Date (Must always be visible)
+    Phase firstP = phases.get(0);
+    String firstDateStr = firstP.startDate.format(formatter);
+    int firstDateWidth = fm.stringWidth(firstDateStr);
+    // Calculate x1 using the standard timeline mapping logic
+    int firstDateX = (int) ((ChronoUnit.SECONDS.between(minDate, firstP.startDate.atStartOfDay()) * width) / (double) totalDuration);
+
+    // --- 2. DRAW ALL PHASE BACKGROUNDS AND BORDERS ---
+    // This provides the base "canvas" before we overlay specific labels
+    for (Phase p : phases) {
+      int x1 = (int) ((ChronoUnit.SECONDS.between(minDate, p.startDate.atStartOfDay()) * width) / (double) totalDuration);
+      int x2 = (int) ((ChronoUnit.SECONDS.between(minDate, p.endDate.atTime(23, 59, 59)) * width) / (double) totalDuration);
 
       g2d.setColor(Color.white);
-      g2d.fillRect(x1, y0, width-x1+1, textHeight);
-
+      g2d.fillRect(x1, y0, x2 - x1 + 1, textHeight);
       g2d.setColor(phaseColors.get(p.name));
-      g2d.fillRect(x1, y0, x2-x1+1, textHeight);
+      g2d.fillRect(x1, y0, x2 - x1 + 1, textHeight);
 
       g2d.setColor(Color.lightGray);
-      g2d.drawRect(x1, y0, x2-x1, textHeight);
-      g2d.setColor(Color.BLACK);
-      g2d.drawString(p.startDate.format(formatter), x1 + 2, y0 + g2d.getFontMetrics().getAscent());
+      g2d.drawRect(x1, y0, x2 - x1, textHeight);
     }
-    //Draw end date
-    String endStr=maxDate.format(formatter);
-    int x=width-g2d.getFontMetrics().stringWidth(endStr)-3;
-    Phase phase=getPhaseForPoint(new Point(x,y0));
-    g2d.setColor((phase==null)?Color.white:phaseColors.get(phase.name));
-    g2d.fillRect(x-3,y0,width-x+3,textHeight);
-    g2d.setColor(Color.BLACK);
-    g2d.drawString(endStr,x,y0 + g2d.getFontMetrics().getAscent());
-    g2d.drawLine(width-1, y0, width-1, y0 + 5);
 
-    // Draw timeline axis
+    // --- 3. DRAW INTERMEDIATE DATES ---
+    // Start tracking occupied space from the end of the first label
+    int currentOccupiedEnd = firstDateX + firstDateWidth + 2 + horizontalPadding;
+
+    for (int i = 1; i < phases.size(); i++) {
+      Phase p = phases.get(i);
+      String dateStr = p.startDate.format(formatter);
+      int dateWidth = fm.stringWidth(dateStr);
+      int xPos = (int) ((ChronoUnit.SECONDS.between(minDate, p.startDate.atStartOfDay()) * width) / (double) totalDuration) + 2;
+
+      // Policy: fits after previous labels AND before the last label
+      if (xPos > currentOccupiedEnd && (xPos + dateWidth + horizontalPadding < lastDateX)) {
+        Color pColor = phaseColors.get(p.name);
+
+        // Draw background specifically for the text area (White + Semi-transparent Phase Color)
+        g2d.setColor(Color.white);
+        g2d.fillRect(xPos - 2, y0, dateWidth + 4, textHeight);
+        g2d.setColor(pColor);
+        g2d.fillRect(xPos - 2, y0, dateWidth + 4, textHeight);
+
+        g2d.setColor(Color.BLACK);
+        g2d.drawString(dateStr, xPos, y0 + ascent);
+
+        currentOccupiedEnd = xPos + dateWidth + horizontalPadding;
+      }
+    }
+
+    // --- 4. DRAW LAST DATE ---
+    // Identify the phase color at the end position for the label background
+    Phase lastP = phases.get(phases.size() - 1);
+    Color lastLabelColor = phaseColors.get(lastP.name);
+
+    g2d.setColor(Color.white);
+    g2d.fillRect(lastDateX - 3, y0, lastDateWidth + 6, textHeight);
+    g2d.setColor(lastLabelColor);
+    g2d.fillRect(lastDateX - 3, y0, lastDateWidth + 6, textHeight);
+
+    g2d.setColor(Color.BLACK);
+    g2d.drawString(lastDateStr, lastDateX, y0 + ascent);
+
+    // Draw end-tick
+    g2d.setColor(Color.gray);
+    g2d.drawLine(width - 1, y0, width - 1, y0 + 5);
+
+    // --- 5. DRAW FIRST DATE (Last operation to ensure it remains completely visible) ---
+    // By drawing this after the last date, the first date will overlap the last date background if resized too narrow
+    g2d.setColor(Color.white);
+    g2d.fillRect(firstDateX, y0, firstDateWidth + 4, textHeight);
+    g2d.setColor(phaseColors.get(firstP.name));
+    g2d.fillRect(firstDateX, y0, firstDateWidth + 4, textHeight);
+
+    g2d.setColor(Color.BLACK);
+    g2d.drawString(firstDateStr, firstDateX + 2, y0 + ascent);
+
+    // --- 6. FINAL AXIS ---
     g2d.setColor(Color.gray);
     g2d.drawLine(0, 0, width, 0);
   }
