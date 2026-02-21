@@ -23,7 +23,6 @@ public class PhaseCompletenessOverviewPanel extends TimelinePanel {
 
   @Override
   protected void paintComponent(Graphics g) {
-    // super.paintComponent draws the translucent phase background areas
     super.paintComponent(g);
 
     if (phases == null || phases.isEmpty() || gProc == null || gProc.processes.isEmpty()) {
@@ -33,60 +32,33 @@ public class PhaseCompletenessOverviewPanel extends TimelinePanel {
     Graphics2D g2d = (Graphics2D) g;
     int width = getWidth();
 
-    // Calculate scaling: how many pixels per process instance
     int totalProcesses = gProc.processes.size();
     double pixelsPerProcess = (double) (sectionHeight - 5) / totalProcesses;
 
-    // Iterate through every day in the timeline
     LocalDate start = minDate.toLocalDate();
     LocalDate end = maxDate.toLocalDate();
     long days = ChronoUnit.DAYS.between(start, end);
-    int barWidth=(int)(width/days);
+    int barWidth = (int) (width / (days + 1));
 
     for (int d = 0; d <= days; d++) {
       LocalDate currentDay = start.plusDays(d);
+      int[] stuckCounts = getStuckCountsForDate(currentDay);
 
-      // Tally how many processes are "stuck" in each phase
-      // Stuck means this is the earliest phase not completed by currentDay
-      int[] stuckCounts = new int[phases.size()];
-      for (int i=0; i<stuckCounts.length; i++)
-        stuckCounts[i]=0;
-
-      for (ProcessInstance pi : gProc.processes) {
-        for (int i = 0; i < phases.size(); i++) {
-          Phase p = phases.get(i);
-          if (p.startDate.isAfter(currentDay))
-            break;
-          LocalDate completionDate = pi.getPhaseCompletenessDate(p.name);
-
-          // If process hasn't finished this phase yet, or finished it after today
-          if (completionDate != null && completionDate.isAfter(currentDay)) {
-            stuckCounts[i]++;
-            break; // Stop at the first incomplete phase
-          }
-        }
-      }
-
-      // Calculate X coordinate for this day
       int x = getXForDate(currentDay, width);
-
-      // Draw the stacked bar from bottom to top
       int currentY = yBottom;
+
       for (int i = 0; i < stuckCounts.length; i++) {
         if (stuckCounts[i] == 0) continue;
 
         int segmentHeight = (int) (stuckCounts[i] * pixelsPerProcess);
-
-        // Get the opaque version of the phase color
         Color phaseColor = getPhaseColor(i);
         Color opaqueColor = new Color(phaseColor.getRed(), phaseColor.getGreen(), phaseColor.getBlue(), 255);
 
         g2d.setColor(opaqueColor);
-        g2d.fillRect(x - barWidth / 2, currentY - segmentHeight, barWidth, segmentHeight);
+        g2d.fillRect(x, currentY - segmentHeight, barWidth, segmentHeight);
 
-        // Optional: thin border for segment separation
         g2d.setColor(new Color(0, 0, 0, 40));
-        g2d.drawRect(x - barWidth / 2, currentY - segmentHeight, barWidth, segmentHeight);
+        g2d.drawRect(x, currentY - segmentHeight, barWidth, segmentHeight);
 
         currentY -= segmentHeight;
       }
@@ -94,8 +66,27 @@ public class PhaseCompletenessOverviewPanel extends TimelinePanel {
   }
 
   /**
-   * Maps a LocalDate to an X coordinate based on the panel width.
+   * Helper to calculate how many processes are stuck in each phase for a given date.
    */
+  private int[] getStuckCountsForDate(LocalDate date) {
+    int[] stuckCounts = new int[phases.size()];
+    for (ProcessInstance pi : gProc.processes) {
+      for (int i = 0; i < phases.size(); i++) {
+        Phase p = phases.get(i);
+        // If the phase hasn't even started by this date, it's not a bottleneck yet
+        if (p.startDate.isAfter(date)) break;
+
+        LocalDate completionDate = pi.getPhaseCompletenessDate(p.name);
+        // If not completed or completed after this date, this is the current bottleneck
+        if (completionDate != null && completionDate.isAfter(date)) {
+          stuckCounts[i]++;
+          break;
+        }
+      }
+    }
+    return stuckCounts;
+  }
+
   private int getXForDate(LocalDate date, int width) {
     LocalDateTime dateTime = date.atStartOfDay();
     long secondsFromStart = ChronoUnit.SECONDS.between(minDate, dateTime);
@@ -104,17 +95,46 @@ public class PhaseCompletenessOverviewPanel extends TimelinePanel {
 
   @Override
   public String getToolTipText(Point pt) {
-    // Reuse phase tooltip logic from parent
-    String baseTip = super.getToolTipText(pt);
+    if (phases == null || gProc == null) return null;
 
-    // Add specific data info if hovering over a specific day
     int width = getWidth();
     double ratio = (double) pt.x / width;
     long offsetSeconds = (long) (ratio * totalDuration);
     LocalDate hoverDate = minDate.plusSeconds(offsetSeconds).toLocalDate();
 
-    String dateInfo = "<br>Date: <b>" + hoverDate.format(formatter) + "</b>";
+    // Re-calculate counts for the specific hovered date
+    int[] stuckCounts = getStuckCountsForDate(hoverDate);
+    int totalProcesses = gProc.processes.size();
+    double pixelsPerProcess = (double) (sectionHeight - 5) / totalProcesses;
 
-    return baseTip == null ? "<html>" + dateInfo + "</html>" : baseTip.replace("</html>", dateInfo + "</html>");
+    String segmentInfo = "";
+    int currentY = yBottom;
+
+    // Determine which segment the mouse is pointing at
+    for (int i = 0; i < stuckCounts.length; i++) {
+      if (stuckCounts[i] == 0) continue;
+
+      int segmentHeight = (int) (stuckCounts[i] * pixelsPerProcess);
+      int segmentTop = currentY - segmentHeight;
+
+      if (pt.y <= currentY && pt.y >= segmentTop) {
+        segmentInfo = String.format("<br>Incomplete Phase: <b>%s</b>" +
+                "<br>Process Count: <b>%d</b>",
+            phases.get(i).name, stuckCounts[i]);
+        break;
+      }
+      currentY -= segmentHeight;
+    }
+
+    // Get the background phase name (underlying schedule)
+    String baseTip = super.getToolTipText(pt);
+    String dateInfo = "<br>Timeline Date: <b>" + hoverDate.format(formatter) + "</b>";
+
+    if (baseTip == null) {
+      return "<html>" + dateInfo + segmentInfo + "</html>";
+    } else {
+      // baseTip usually contains the phase name of the background timeline
+      return baseTip.replace("</html>", dateInfo + segmentInfo + "</html>");
+    }
   }
 }
