@@ -124,4 +124,11 @@ public class ActionOverviewPanel extends JPanel {
     String actionName; LocalDate peakDate; int localMax;
     ActionPeakInfo(String n, LocalDate d, int m) { actionName = n; peakDate = d; localMax = m; }
   }
+
+  public int getScrollbarWidth() {
+    for (Component c:getComponents())
+      if (c instanceof JScrollPane)
+        return ((JScrollPane)c).getVerticalScrollBar().getPreferredSize().width+3;
+    return 0;
+  }
 }
