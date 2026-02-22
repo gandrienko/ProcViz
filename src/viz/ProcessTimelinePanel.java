@@ -16,6 +16,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
   public static int SYMBOL_DOT=0, SYMBOL_CHAR=1;
   public static Color taskSymbolColor=new Color(60,60,255,160),
       delayedTaskColor=Color.red.darker();
+  public static Color threadHighlightColor=new Color(0,240,255,180);
   
   public GlobalProcess gProc=null;
   private SelectionManager selectionManager=null;
@@ -42,10 +43,20 @@ public class ProcessTimelinePanel extends TimelinePanel{
     actorRoleColors=Utils.generateItemColors(gProc.actorRoles);
     ArrayList<String> actionTypes=new ArrayList<String>(gProc.actionTypes.keySet());
     setPreferredSize(new Dimension(1200, 100 + gProc.processes.size() * actorLineSpacing*10));
-    if (selectionManager!=null)
+    if (selectionManager!=null) {
       selectionManager.addListener(() -> {
         repaint();
       });
+
+      // Add mouse listener for selection
+      addMouseListener(new java.awt.event.MouseAdapter() {
+        @Override
+        public void mouseClicked(java.awt.event.MouseEvent e) {
+          if (!handleMouseClick(e.getPoint()) && e.getClickCount()==2)
+            selectionManager.clearSelection();
+        }
+      });
+    }
   }
 
   public SelectionManager getSelectionManager() {
@@ -144,35 +155,21 @@ public class ProcessTimelinePanel extends TimelinePanel{
         maxY = Math.max(maxY, y);
 
         // Determine if this specific thread contains selected tasks
-        boolean isThreadSelected = false;
-        if (selectionManager != null && selectionManager.hasSelection()) {
-          for (TaskInstance t : thread.tasks) {
-            if (selectionManager.isTaskSelected(t)) {
-              isThreadSelected = true;
-              break;
-            }
-          }
-        }
+        boolean isThreadSelected = selectionManager != null && selectionManager.hasSelection() &&
+            thread.hasAnyTask(selectionManager.getSelectedTasks());
 
-        // Coloring Logic
         if (isThreadSelected) {
-          g.setColor(Color.black);
-          // Pre-activity: Thin and Dashed
-          g2d.setStroke(dashedStroke);
-          g.drawLine(xStartProcess, y, xStartThread, y);
-          // Activity phase: Bold and Solid
-          g2d.setStroke(highlightedStroke);
-          g.drawLine(xStartThread, y, xEndThread, y);
-        } else {
-          Color roleColor = actorRoleColors.getOrDefault(thread.role, Color.gray);
-          g.setColor(roleColor);
-          // Pre-activity: Thin and Dashed
-          g2d.setStroke(dashedStroke);
-          g.drawLine(xStartProcess, y, xStartThread, y);
-          // Activity phase: Thin and Solid
-          g2d.setStroke(solidStroke);
-          g.drawLine(xStartThread, y, xEndThread, y);
+          g.setColor(threadHighlightColor);
+          g.fillRect(xStartProcess, y - 2, xEndThread - xStartProcess, 5);
         }
+        Color roleColor = actorRoleColors.getOrDefault(thread.role, Color.gray);
+        g.setColor(roleColor);
+        // Pre-activity: Thin and Dashed
+        g2d.setStroke(dashedStroke);
+        g.drawLine(xStartProcess, y, xStartThread, y);
+        // Activity phase: Thin and Solid
+        g2d.setStroke(solidStroke);
+        g.drawLine(xStartThread, y, xEndThread, y);
 
         for (int tIdx=0; tIdx<thread.tasks.size(); tIdx++) {
           TaskInstance t=thread.tasks.get(tIdx);
@@ -290,31 +287,18 @@ public class ProcessTimelinePanel extends TimelinePanel{
         int xEndThread = getXForTime(tLife.end, width);
 
         // Determine Selection
-        boolean isThreadSelected = false;
-        if (selectionManager != null && selectionManager.hasSelection()) {
-          for (TaskInstance t : thread.tasks) {
-            if (selectionManager.isTaskSelected(t)) {
-              isThreadSelected = true;
-              break;
-            }
-          }
-        }
-
-        // Appearance logic (Identical to paintByProcesses)
+        boolean isThreadSelected = selectionManager != null && selectionManager.hasSelection() &&
+            thread.hasAnyTask(selectionManager.getSelectedTasks());
         if (isThreadSelected) {
-          g.setColor(Color.black);
-          g2d.setStroke(dashedStroke);
-          g.drawLine(minActorX, y, xStartThread, y);
-          g2d.setStroke(highlightedStroke);
-          g.drawLine(xStartThread, y, xEndThread, y);
-        } else {
-          Color roleColor = actorRoleColors.getOrDefault(thread.role, Color.gray);
-          g.setColor(roleColor);
-          g2d.setStroke(dashedStroke);
-          g.drawLine(minActorX, y, xStartThread, y);
-          g2d.setStroke(solidStroke);
-          g.drawLine(xStartThread, y, xEndThread, y);
+          g.setColor(threadHighlightColor);
+          g.fillRect(minActorX, y - 2, xEndThread - minActorX, 5);
         }
+        Color roleColor = actorRoleColors.getOrDefault(thread.role, Color.gray);
+        g.setColor(roleColor);
+        g2d.setStroke(dashedStroke);
+        g.drawLine(minActorX, y, xStartThread, y);
+        g2d.setStroke(solidStroke);
+        g.drawLine(xStartThread, y, xEndThread, y);
 
         // Draw tasks
         for (int tIdx=0; tIdx<thread.tasks.size(); tIdx++) {
@@ -343,6 +327,49 @@ public class ProcessTimelinePanel extends TimelinePanel{
       y0 = currentY + actorLineSpacing * 4;
     }
     updatePanelSize(y0);
+  }
+
+  private boolean handleMouseClick(Point pt) {
+    if (selectionManager == null) return false;
+
+    // 1. Check for Task Selection (High priority/Smallest targets)
+    for (String processId : processTaskAreas.keySet()) {
+      Map<Rectangle, TaskInstance> taskMap = processTaskAreas.get(processId);
+      for (Map.Entry<Rectangle, TaskInstance> entry : taskMap.entrySet()) {
+        if (entry.getKey().contains(pt)) {
+          selectionManager.toggleTasks(Collections.singletonList(entry.getValue()));
+          return true; // Selection handled
+        }
+      }
+    }
+
+    // 2. Check for Thread Selection (Low priority/Line targets)
+    for (String processId : processActorAreas.keySet()) {
+      Map<Rectangle, Actor> actorMap = processActorAreas.get(processId);
+      for (Map.Entry<Rectangle, Actor> entry : actorMap.entrySet()) {
+        if (entry.getKey().contains(pt)) {
+          Actor actor = entry.getValue();
+          ProcessInstance p = findProcessById(processId);
+          if (p != null && p.threads.containsKey(actor.id)) {
+            // Get all tasks associated with this specific actor's thread in this process
+            List<TaskInstance> threadTasks = p.threads.get(actor.id).tasks;
+            selectionManager.toggleTasks(threadTasks);
+          }
+          return true; // Selection handled
+        }
+      }
+    }
+    return false;
+ }
+
+  /**
+   * Helper to retrieve the process instance object by its ID string.
+   */
+  private ProcessInstance findProcessById(String id) {
+    for (ProcessInstance p : gProc.processes) {
+      if (p.id.equals(id)) return p;
+    }
+    return null;
   }
 
   /**

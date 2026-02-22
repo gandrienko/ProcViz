@@ -12,7 +12,7 @@ public class SelectionManager {
   public void toggleTasks(List<TaskInstance> tasks) {
     if (tasks == null || tasks.isEmpty()) return;
     // If the first task in the set is already there, we assume we are unselecting the group
-    if (selectedTasks.contains(tasks.get(0))) {
+    if (selectedTasks.containsAll(tasks)) {
       selectedTasks.removeAll(tasks);
     } else {
       selectedTasks.addAll(tasks);

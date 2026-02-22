@@ -37,7 +37,7 @@ public class ActionHistogramPanel extends TimelinePanel {
         repaint();
       });
 
-    setPreferredSize(new Dimension(800, 80));
+    setPreferredSize(new Dimension(800, 90));
     setToolTipText(""); // Required to enable the Swing tooltip system
 
     MouseAdapter dragListener = new MouseAdapter() {
@@ -101,27 +101,6 @@ public class ActionHistogramPanel extends TimelinePanel {
 
         dragStartPoint = null; // Reset
       }
-      /*
-      public void mouseClicked(MouseEvent e) {
-        // 1. Find the date under the mouse
-        LocalDate dateAtMouse = getDateAtX(e.getX());
-
-        // 2. Fetch tasks for this action/date
-        List<TaskInstance> tasks = tasksByDays.get(dateAtMouse);
-        int countAtMouse=(int)Math.round((double)(maxCountBarHeight-e.getY())/maxCountBarHeight*getMaxCount());
-        if (tasks != null && tasks.size()>=countAtMouse) {
-          selectionManager.toggleTasks(tasks);
-          repaint();
-        }
-        else if (e.getClickCount() == 2) {
-          // Clicked background
-          if (selectionManager.hasSelection()) {
-            selectionManager.clearSelection();
-            repaint();
-          }
-        }
-      }
-      */
     };
 
     this.addMouseListener(dragListener);
@@ -166,11 +145,10 @@ public class ActionHistogramPanel extends TimelinePanel {
 
     int width = getWidth();
     int height = getHeight();
-    maxCountBarHeight=height-2;
+    maxCountBarHeight = height - 8;
     long totalSeconds = ChronoUnit.SECONDS.between(minDate, maxDate);
 
     // 2. Draw Histogram Bars
-    g2d.setColor(new Color(120, 120, 120, 220));
     for (Map.Entry<LocalDate, Integer> entry : dayCounts.entrySet()) {
       LocalDateTime dayStart = entry.getKey().atStartOfDay();
       LocalDateTime dayEnd = dayStart.plusDays(1);
@@ -185,21 +163,36 @@ public class ActionHistogramPanel extends TimelinePanel {
       double ratio = (double) entry.getValue() / maxCount;
       int barHeight = (int) (ratio * maxCountBarHeight);
 
+      // Draw the main bar
+      g2d.setColor(new Color(120, 120, 120, 220));
       g2d.fillRect(x1, height - barHeight, barWidth, barHeight);
 
-      if (selectionManager!=null && selectionManager.hasSelection()) {
+      if (selectionManager != null && selectionManager.hasSelection()) {
         List<TaskInstance> tasks = tasksByDays.get(dayStart.toLocalDate());
-        if (tasks!=null && !tasks.isEmpty()) {
-          int nSelected=0;
-          for (TaskInstance task:selectionManager.getSelectedTasks())
+        if (tasks != null && !tasks.isEmpty()) {
+          int nSelected = 0;
+          for (TaskInstance task : selectionManager.getSelectedTasks()) {
             if (tasks.contains(task)) ++nSelected;
-          if (nSelected>0) {
-            double selRatio=(double)nSelected/maxCount;
+          }
+
+          if (nSelected > 0) {
+            // Draw the black bar segment (proportional to selection)
+            double selRatio = (double) nSelected / maxCount;
             int selHeight = (int) (selRatio * maxCountBarHeight);
-            Color prevColor=g2d.getColor();
             g2d.setColor(new Color(60, 60, 60, 255));
             g2d.fillRect(x1, height - selHeight, barWidth, selHeight);
-            g2d.setColor(prevColor);
+
+            // NEW: Draw a black dot above the bar to ensure visibility
+            // We place it slightly above the bar height, but at least 10px from the bottom
+            int dotRadius = 3;
+            int dotX = x1 + (barWidth / 2) - (dotRadius / 2);
+            int dotY = height - barHeight - dotRadius - 2;
+
+            // Ensure the dot stays within the panel bounds
+            if (dotY < 2) dotY = 2;
+
+            g2d.setColor(Color.BLACK);
+            g2d.fillOval(dotX, dotY, dotRadius * 2, dotRadius * 2);
           }
         }
       }

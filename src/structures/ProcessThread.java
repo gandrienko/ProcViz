@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ProcessThread {
   public String processID; // ID of the process that includes this thread
@@ -29,6 +30,21 @@ public class ProcessThread {
     if (!tasks.contains(task)) {
       tasks.add(task);
     }
+  }
+
+  public boolean hasTask(TaskInstance task) {
+    if (task==null || tasks==null)
+      return false;
+    return tasks.contains(task);
+  }
+
+  public boolean hasAnyTask(Set<TaskInstance> taskSet) {
+    if (tasks==null || tasks.isEmpty() || taskSet==null || taskSet.isEmpty())
+      return false;
+    for (TaskInstance task:tasks)
+      if (taskSet.contains(task))
+        return true;
+    return false;
   }
 
   public TimeInterval getLifetime() {
