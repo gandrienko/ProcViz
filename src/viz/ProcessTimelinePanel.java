@@ -13,7 +13,8 @@ public class ProcessTimelinePanel extends TimelinePanel{
   public static int SYMBOL_DOT=0, SYMBOL_CHAR=1;
   public static Color taskSymbolColor=new Color(60,60,255,160),
       delayedTaskColor=Color.red.darker();
-  public static Color threadHighlightColor=new Color(0,240,255,180);
+  public static Color threadHighlightColor=new Color(0,240,255,180),
+      processHighlightColor=new Color(255,255,0,90);
   
   public GlobalProcess gProc=null;
   private SelectionManager selectionManager=null;
@@ -42,6 +43,9 @@ public class ProcessTimelinePanel extends TimelinePanel{
     setPreferredSize(new Dimension(1200, 100 + gProc.processes.size() * actorLineSpacing*10));
     if (selectionManager!=null) {
       selectionManager.addTaskListener(() -> {
+        repaint();
+      });
+      selectionManager.addProcessListener(() -> {
         repaint();
       });
 
@@ -117,6 +121,12 @@ public class ProcessTimelinePanel extends TimelinePanel{
       List<ProcessThread> sortedThreads = new ArrayList<>(p.threads.values());
       int vLineHeight = (sortedThreads.size() - 1) * actorLineSpacing;
       int maxY = y0+vLineHeight;
+
+      boolean selected=selectionManager!=null && selectionManager.isProcessSelested(p.id);
+      if (selected) {
+        g2d.setColor(processHighlightColor);
+        g2d.fillRect(xStartProcess,y0,xEndProcess-xStartProcess,vLineHeight+actorLineSpacing);
+      }
 
       if (p.hasPhaseCompletenessDates()) {
         for (Phase ph:gProc.phases.values()) {
@@ -214,7 +224,8 @@ public class ProcessTimelinePanel extends TimelinePanel{
     if (isSelected) {
       Stroke str=g2d.getStroke();
       g2d.setStroke(new BasicStroke(2.0f));
-      g2d.drawOval(x1 - 8, y - 8, 16, 16);
+      int radius=Math.round(0.75f*actorLineSpacing);
+      g2d.drawOval(x1 - radius, y - radius, radius*2, radius*2);
       g2d.setStroke(str);
     }
 
@@ -279,7 +290,16 @@ public class ProcessTimelinePanel extends TimelinePanel{
         int xStartThread = getXForTime(tLife.start, width);
         int xEndThread = getXForTime(tLife.end, width);
 
-        // Determine Selection
+        // Process selection
+        boolean isProcessSelected = selectionManager!=null && selectionManager.isProcessSelested(tc.process.id);
+        if (isProcessSelected) {
+          int xEndProcess=getXForTime(tc.process.getProcessLifetime().end,width);
+          g.setColor(processHighlightColor);
+          int hWidth=actorLineSpacing-2;
+          g.fillRect(minActorX,y-hWidth/2,xEndProcess-minActorX, hWidth);
+        }
+
+        // Thread selection
         boolean isThreadSelected = selectionManager != null && selectionManager.hasTaskSelection() &&
             thread.hasAnyTask(selectionManager.getSelectedTasks());
         if (isThreadSelected) {

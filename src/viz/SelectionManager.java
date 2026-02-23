@@ -61,6 +61,10 @@ public class SelectionManager {
     return !selectedTasks.isEmpty();
   }
 
+  public boolean isProcessSelested(String id) {
+    return selectedProcessIds.contains(id);
+  }
+
   private void notifyListeners(boolean aboutTasks, boolean aboutProcesses) {
     if (aboutTasks)
       for (Runnable r : taskListeners) r.run();
