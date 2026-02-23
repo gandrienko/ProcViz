@@ -132,7 +132,7 @@ public class ActionHistogramPanel extends TimelinePanel {
 
   @Override
   protected void paintComponent(Graphics g) {
-    // 1. Draw phase backgrounds
+    // 1. Draw phase  backgrounds
     super.paintComponent(g);
 
     if (dayCounts == null || dayCounts.isEmpty() || maxCount <= 0) {
