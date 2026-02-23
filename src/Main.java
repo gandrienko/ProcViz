@@ -141,7 +141,7 @@ public class Main {
 
         // 1. Initialize the panels
         TimelineWithHeaderAndFooter completenessPanel = new TimelineWithHeaderAndFooter(
-            new PhaseCompletenessOverviewPanel(gProc),false);
+            new PhaseCompletenessOverviewPanel(gProc,selectionManager),false);
 
         ActionOverviewPanel overviewPanel = new ActionOverviewPanel(gProc, selectionManager);
         JPanel topContainer=new JPanel();

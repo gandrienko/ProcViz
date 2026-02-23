@@ -1,12 +1,9 @@
 package viz;
 
-import data.StatusChecker;
 import structures.*;
 
 import java.awt.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.List;
 
@@ -44,7 +41,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
     ArrayList<String> actionTypes=new ArrayList<String>(gProc.actionTypes.keySet());
     setPreferredSize(new Dimension(1200, 100 + gProc.processes.size() * actorLineSpacing*10));
     if (selectionManager!=null) {
-      selectionManager.addListener(() -> {
+      selectionManager.addTaskListener(() -> {
         repaint();
       });
 
@@ -53,7 +50,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
         @Override
         public void mouseClicked(java.awt.event.MouseEvent e) {
           if (!handleMouseClick(e.getPoint()) && e.getClickCount()==2)
-            selectionManager.clearSelection();
+            selectionManager.clearTaskSelection();
         }
       });
     }
@@ -155,7 +152,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
         maxY = Math.max(maxY, y);
 
         // Determine if this specific thread contains selected tasks
-        boolean isThreadSelected = selectionManager != null && selectionManager.hasSelection() &&
+        boolean isThreadSelected = selectionManager != null && selectionManager.hasTaskSelection() &&
             thread.hasAnyTask(selectionManager.getSelectedTasks());
 
         if (isThreadSelected) {
@@ -283,7 +280,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
         int xEndThread = getXForTime(tLife.end, width);
 
         // Determine Selection
-        boolean isThreadSelected = selectionManager != null && selectionManager.hasSelection() &&
+        boolean isThreadSelected = selectionManager != null && selectionManager.hasTaskSelection() &&
             thread.hasAnyTask(selectionManager.getSelectedTasks());
         if (isThreadSelected) {
           g.setColor(threadHighlightColor);

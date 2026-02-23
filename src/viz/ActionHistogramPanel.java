@@ -33,7 +33,7 @@ public class ActionHistogramPanel extends TimelinePanel {
 
     this.selectionManager=selectionManager;
     if (selectionManager!=null)
-      selectionManager.addListener(() -> {
+      selectionManager.addTaskListener(() -> {
         repaint();
       });
 
@@ -69,8 +69,8 @@ public class ActionHistogramPanel extends TimelinePanel {
           }
           else if (e.getClickCount() == 2) {
             // Clicked background
-            if (selectionManager.hasSelection()) {
-              selectionManager.clearSelection();
+            if (selectionManager.hasTaskSelection()) {
+              selectionManager.clearTaskSelection();
               repaint();
             }
           }
@@ -167,7 +167,7 @@ public class ActionHistogramPanel extends TimelinePanel {
       g2d.setColor(new Color(120, 120, 120, 220));
       g2d.fillRect(x1, height - barHeight, barWidth, barHeight);
 
-      if (selectionManager != null && selectionManager.hasSelection()) {
+      if (selectionManager != null && selectionManager.hasTaskSelection()) {
         List<TaskInstance> tasks = tasksByDays.get(dayStart.toLocalDate());
         if (tasks != null && !tasks.isEmpty()) {
           int nSelected = 0;
