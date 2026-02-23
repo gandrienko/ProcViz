@@ -205,13 +205,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
 
     boolean isSelected = selectionManager != null && selectionManager.isTaskSelected(t);
 
-    if (isSelected) {
-      g2d.setColor(Color.black);
-    } else {
-      //Color symColor = actionTypeColors.getOrDefault(t.actionType, Color.gray);
-      //g2d.setColor(Utils.toSaturated(symColor));
-      g2d.setColor((t.isDelayed)?delayedTaskColor:taskSymbolColor);
-    }
+    g2d.setColor((t.isDelayed)?delayedTaskColor:taskSymbolColor);
 
     ActionType aType = gProc.actionTypes.get(t.actionType);
     if (symbolMode == SYMBOL_CHAR && aType != null && aType.code != null) {
@@ -219,10 +213,12 @@ public class ProcessTimelinePanel extends TimelinePanel{
       g2d.drawString(aType.code, x1 - dx, y + fm.getHeight() / 2 - fm.getDescent());
     } else {
       g2d.fillOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
-      if (isSelected) {
-        g2d.setStroke(new BasicStroke(2.0f));
-        g2d.drawOval(x1 - markRadius, y - markRadius, markDiameter + x2 - x1, markDiameter);
-      }
+    }
+    if (isSelected) {
+      Stroke str=g2d.getStroke();
+      g2d.setStroke(new BasicStroke(2.0f));
+      g2d.drawOval(x1 - 8, y - 8, 16, 16);
+      g2d.setStroke(str);
     }
 
     Map<Rectangle, TaskInstance> taskAreas = processTaskAreas.computeIfAbsent(p.id, k -> new HashMap<>());

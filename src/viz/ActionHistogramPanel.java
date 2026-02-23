@@ -186,7 +186,7 @@ public class ActionHistogramPanel extends TimelinePanel {
             // We place it slightly above the bar height, but at least 10px from the bottom
             int dotRadius = 3;
             int dotX = x1 + (barWidth / 2) - (dotRadius / 2);
-            int dotY = height - barHeight - dotRadius - 2;
+            int dotY = dotRadius+2;
 
             // Ensure the dot stays within the panel bounds
             if (dotY < 2) dotY = 2;
