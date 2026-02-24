@@ -12,8 +12,7 @@ public class CollapsibleActionSection extends JPanel {
   public CollapsibleActionSection(String name, ActionHistogramPanel hist, Runnable onToggle) {
     this.histogram = hist;
     this.onToggle = onToggle;
-    this.localMax = 0;
-    for (int val : hist.getDayCounts().values()) localMax = Math.max(localMax, val);
+    determineLocalMax();
 
     setLayout(new BorderLayout());
 
@@ -46,4 +45,24 @@ public class CollapsibleActionSection extends JPanel {
   public boolean isExpanded() { return histogram.isVisible(); }
   public int getLocalMax() { return localMax; }
   public ActionHistogramPanel getHistogramPanel() { return histogram; }
+
+
+  public int getFilterMode() {
+    return histogram.getFilterMode();
+  }
+
+  public void setFilterMode(int filterMode) {
+    if (histogram.getFilterMode()==filterMode)
+      return;
+    histogram.setFilterMode(filterMode);
+    determineLocalMax();
+  }
+
+  public int determineLocalMax() {
+    localMax = 0;
+    if (histogram.getDayCounts()!=null)
+      for (int val : histogram.getDayCounts().values()) localMax = Math.max(localMax, val);
+    return localMax;
+  }
+
 }

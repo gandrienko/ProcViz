@@ -115,8 +115,8 @@ public class GlobalProcess {
     return counts;
   }
 
-  public Map<String, Map<LocalDate, List<TaskInstance>>> getTasksByActionAndDay() {
-    Map<String, Map<LocalDate, List<TaskInstance>>> tasksMap = new TreeMap<>();
+  public Map<String, Map<LocalDate, List<TaskContext>>> getTasksByActionAndDay() {
+    Map<String, Map<LocalDate, List<TaskContext>>> tasksMap = new TreeMap<>();
     for (ProcessInstance p : processes) {
       for (Map.Entry<String, ProcessThread> e:p.threads.entrySet()) {
         ProcessThread th=e.getValue();
@@ -124,7 +124,7 @@ public class GlobalProcess {
           LocalDate date = t.actual.start.toLocalDate();
           tasksMap.computeIfAbsent(t.actionType, k -> new TreeMap<>())
               .computeIfAbsent(date, k -> new ArrayList<>())
-              .add(t);
+              .add(new TaskContext(t,p.id));
         }
       }
     }

@@ -1,6 +1,7 @@
 package viz;
 
 import structures.Phase;
+import structures.TaskContext;
 import structures.TaskInstance;
 
 import java.awt.*;
@@ -9,33 +10,44 @@ import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Map;
+import java.util.*;
 import java.util.List;
 
 public class ActionHistogramPanel extends TimelinePanel {
-  private Map<LocalDate, Integer> dayCounts=null;
-  private Map<LocalDate, List<TaskInstance>> tasksByDays=null;
+  public static int SHOW_ALL=0, SHOW_SELECTED=1;
+
+  private Map<LocalDate, List<TaskContext>> tasksByDays=null;
   private SelectionManager selectionManager=null;
   private int maxCount, maxCountBarHeight=0;
+  private Map<LocalDate, Integer> dayCounts=null;
+
+  public int filterMode=SHOW_ALL;
+
   // Variables to track drag state
   private Point dragStartPoint = null;
 
   public ActionHistogramPanel(java.util.List<Phase> phases,
-                              Map<LocalDate, Integer> dayCounts,
                               int maxCount,
-                              Map<LocalDate, List<TaskInstance>> tasksByDays,
+                              Map<LocalDate, List<TaskContext>> tasksByDays,
                               SelectionManager selectionManager) {
     super(phases);
-    this.dayCounts=dayCounts;
     this.tasksByDays = tasksByDays;
     this.maxCount = maxCount;
 
     this.selectionManager=selectionManager;
-    if (selectionManager!=null)
+    if (selectionManager!=null) {
       selectionManager.addTaskListener(() -> {
         repaint();
       });
+      selectionManager.addProcessListener(() -> {
+        if (filterMode==SHOW_SELECTED) {
+          countTasksByDays();
+          repaint();
+        }
+      });
+    }
+
+    countTasksByDays();
 
     setPreferredSize(new Dimension(800, 90));
     setToolTipText(""); // Required to enable the Swing tooltip system
@@ -62,7 +74,7 @@ public class ActionHistogramPanel extends TimelinePanel {
           int countAtMouse=(int)Math.round((double)(maxCountBarHeight-e.getY())/maxCountBarHeight*getMaxCount());
 
           // 2. Fetch tasks for this action/date
-          List<TaskInstance> tasks = tasksByDays.get(date1);
+          List<TaskInstance> tasks = getTasksForDate(date1);
           if (tasks != null && tasks.size()>=countAtMouse) {
             selectionManager.toggleTasks(tasks);
             repaint();
@@ -84,11 +96,12 @@ public class ActionHistogramPanel extends TimelinePanel {
           List<TaskInstance> tasksToToggle = new ArrayList<TaskInstance>();
 
           // We iterate through our data map to find dates in the range
-          for (Map.Entry<LocalDate, List<TaskInstance>> entry : tasksByDays.entrySet()) {
+          for (Map.Entry<LocalDate, List<TaskContext>> entry : tasksByDays.entrySet()) {
             LocalDate d = entry.getKey();
             if ((d.isEqual(startDate) || d.isAfter(startDate)) &&
                 (d.isEqual(endDate) || d.isBefore(endDate))) {
-              tasksToToggle.addAll(entry.getValue());
+              for (TaskContext tc:entry.getValue())
+                tasksToToggle.add(tc.task);
             }
           }
 
@@ -105,7 +118,56 @@ public class ActionHistogramPanel extends TimelinePanel {
 
     this.addMouseListener(dragListener);
     this.addMouseMotionListener(dragListener);
+  }
 
+  public int getFilterMode() {
+    return filterMode;
+  }
+
+  public void setFilterMode(int filterMode) {
+    if (this.filterMode==filterMode)
+      return;;
+    this.filterMode = filterMode;
+    countTasksByDays();
+    repaint();
+  }
+
+  private List<TaskInstance> getTasksForDate(LocalDate date) {
+    List<TaskContext> tCon=tasksByDays.get(date);
+    if (tCon==null || tCon.isEmpty())
+      return null;
+    List<TaskInstance> tasks=new ArrayList<TaskInstance>(tCon.size());
+    for (TaskContext tc:tCon)
+      if (filterMode==SHOW_ALL || selectionManager==null || selectionManager.isProcessSelested(tc.processId))
+        tasks.add(tc.task);
+    return tasks;
+  }
+
+  public Map<LocalDate, Integer> countTasksByDays() {
+    dayCounts=null;
+    if (tasksByDays==null || tasksByDays.isEmpty())
+      return null;
+    TreeMap<LocalDate,Integer> counts=new TreeMap<>();
+    for (Map.Entry<LocalDate,List<TaskContext>> e:tasksByDays.entrySet()) {
+      List<TaskContext> tCon=e.getValue();
+      int count=0;
+      if (tCon!=null && !tCon.isEmpty())
+        if (filterMode==SHOW_ALL || selectionManager==null)
+          count=tCon.size();
+        else
+          for (TaskContext tc:tCon)
+            if (selectionManager.isProcessSelested(tc.processId))
+              ++count;
+      counts.put(e.getKey(), count);
+    }
+    dayCounts=counts;
+    return counts;
+  }
+
+  public Map<LocalDate, Integer> getDayCounts() {
+    if (dayCounts==null)
+      countTasksByDays();
+    return dayCounts;
   }
 
   public void setMaxCount(int maxCount) {
@@ -115,10 +177,6 @@ public class ActionHistogramPanel extends TimelinePanel {
 
   public int getMaxCount() {
     return maxCount;
-  }
-
-  public Map<LocalDate, Integer> getDayCounts() {
-    return dayCounts;
   }
 
   private LocalDate getDateAtX(int x) {
@@ -168,7 +226,7 @@ public class ActionHistogramPanel extends TimelinePanel {
       g2d.fillRect(x1, height - barHeight, barWidth, barHeight);
 
       if (selectionManager != null && selectionManager.hasTaskSelection()) {
-        List<TaskInstance> tasks = tasksByDays.get(dayStart.toLocalDate());
+        List<TaskInstance> tasks = getTasksForDate(dayStart.toLocalDate());
         if (tasks != null && !tasks.isEmpty()) {
           int nSelected = 0;
           for (TaskInstance task : selectionManager.getSelectedTasks()) {
@@ -239,13 +297,16 @@ public class ActionHistogramPanel extends TimelinePanel {
     LocalDate dateAtMouse = minDate.plusSeconds(secondsAtMouse).toLocalDate();
 
     // Check if we are over a bar
-    Integer count = dayCounts.get(dateAtMouse);
     boolean onBar = false;
-    if (count != null && count > 0) {
-      double ratio = (double) count / maxCount;
-      int barHeight = (int) (ratio * (height - 2));
-      if (event.getY() >= (height - barHeight)) {
-        onBar = true;
+    Integer count=0;
+    if (dayCounts!=null) {
+      count = dayCounts.get(dateAtMouse);
+      if (count != null && count > 0) {
+        double ratio = (double) count / maxCount;
+        int barHeight = (int) (ratio * (height - 2));
+        if (event.getY() >= (height - barHeight)) {
+          onBar = true;
+        }
       }
     }
 

@@ -1,10 +1,13 @@
 package viz;
 
 import structures.GlobalProcess;
+import structures.TaskContext;
 import structures.TaskInstance;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.List;
@@ -47,13 +50,14 @@ public class ActionOverviewPanel extends JPanel {
     contentPanel = new JPanel();
     contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
 
-    Map<String, Map<LocalDate, List<TaskInstance>>> allTasksByDays=gProc.getTasksByActionAndDay();
+    Map<String, Map<LocalDate, List<TaskContext>>> allTasksByDays=gProc.getTasksByActionAndDay();
 
     for (ActionPeakInfo info : sortedActions) {
-      Map<LocalDate, List<TaskInstance>> tasksByDays =
-          allTasksByDays.getOrDefault(info.actionName, Collections.emptyMap());
+      Map<LocalDate, List<TaskContext>> tasksByDays = allTasksByDays.get(info.actionName);
+      if (tasksByDays==null || tasksByDays.isEmpty())
+        continue;;
       ActionHistogramPanel hist = new ActionHistogramPanel(
-          gProc.getListOfPhases(), data.get(info.actionName), globalMax,tasksByDays,selectionManager);
+          gProc.getListOfPhases(), globalMax,tasksByDays,selectionManager);
 
       // Callback now includes a call to updateLayout to remove empty space
       CollapsibleActionSection section = new CollapsibleActionSection(info.actionName, hist, () -> {
@@ -78,6 +82,17 @@ public class ActionOverviewPanel extends JPanel {
 
     // 2) Add ControlPanel to SOUTH (Fixed at bottom)
     add(createControlPanel(), BorderLayout.SOUTH);
+
+    if (selectionManager!=null) {
+      selectionManager.addProcessListener(() -> {
+        if (sections.get(0).getFilterMode()==ActionHistogramPanel.SHOW_SELECTED) {
+          for (CollapsibleActionSection section:sections)
+            section.determineLocalMax();
+          determineGlobalMax();
+          updateScaling();
+        }
+      });
+    }
   }
 
   private void updateLayout() {
@@ -103,7 +118,54 @@ public class ActionOverviewPanel extends JPanel {
 
     panel.add(new JLabel("Scale Mode: "));
     panel.add(commonBtn); panel.add(individualBtn); panel.add(visibleBtn);
+
+    // --- Filter Mode Controls ---
+    JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    JRadioButton allButton = new JRadioButton("all");
+    JRadioButton selectedButton = new JRadioButton("selected only");
+    ButtonGroup filterGroup = new ButtonGroup();
+    filterGroup.add(allButton);
+    filterGroup.add(selectedButton);
+
+    if (sections.get(0).getFilterMode() == ProcessTimelinePanel.SHOW_ALL)
+      allButton.setSelected(true);
+    else
+      selectedButton.setSelected(true);
+
+    filterPanel.add(new JLabel("View:"));
+    filterPanel.add(allButton);
+    filterPanel.add(selectedButton);
+    panel.add(filterPanel); // Adding to the central control panel
+
+    allButton.addActionListener(new ActionListener() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        for (CollapsibleActionSection section:sections)
+          section.setFilterMode(ActionHistogramPanel.SHOW_ALL);
+        determineGlobalMax();
+        updateScaling();
+      }
+    });
+    selectedButton.addActionListener(new ActionListener() {
+      @Override
+      public void actionPerformed(ActionEvent e) {
+        for (CollapsibleActionSection section:sections) {
+          section.setFilterMode(ActionHistogramPanel.SHOW_SELECTED);
+          section.determineLocalMax();
+        }
+        determineGlobalMax();
+        updateScaling();
+      }
+    });
     return panel;
+  }
+
+  public void determineGlobalMax () {
+    globalMax=0;
+    for (CollapsibleActionSection sec:sections)
+      globalMax=Math.max(globalMax,sec.getLocalMax());
+    for (CollapsibleActionSection sec:sections)
+      sec.getHistogramPanel().setMaxCount(globalMax);
   }
 
   public void updateScaling() {
