@@ -2,7 +2,6 @@ package viz;
 
 import structures.GlobalProcess;
 import structures.TaskContext;
-import structures.TaskInstance;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,12 +12,14 @@ import java.util.*;
 import java.util.List;
 
 public class ActionOverviewPanel extends JPanel {
+  private SelectionManager selectionManager=null;
   private List<CollapsibleActionSection> sections = new ArrayList<>();
   private int globalMax = 0;
   private int mode = 1; // 1: common, 2: individual, 3: common visible
   private JPanel contentPanel; // The panel inside the scroll pane
 
   public ActionOverviewPanel(GlobalProcess gProc, SelectionManager selectionManager) {
+    this.selectionManager=selectionManager;
     // Use BorderLayout to separate ScrollPane from ControlPanel
     setLayout(new BorderLayout());
 
@@ -157,6 +158,27 @@ public class ActionOverviewPanel extends JPanel {
         updateScaling();
       }
     });
+
+    panel.add(new JSeparator(JSeparator.VERTICAL));
+    JButton propagateBtn = new JButton("Select Processes of Tasks");
+    propagateBtn.setToolTipText("Select process instances containing currently selected tasks");
+
+    propagateBtn.addActionListener(e -> {
+      if (selectionManager == null) return;
+
+      Set<String> processIdsToSelect = new HashSet<>();
+      for (CollapsibleActionSection section : sections) {
+        // Collect IDs from each histogram panel
+        processIdsToSelect.addAll(section.getHistogramPanel().getProcessIdsForSelectedTasks());
+      }
+
+      if (!processIdsToSelect.isEmpty()) {
+        // Toggle the collected IDs in the SelectionManager
+        selectionManager.toggleProcesses(processIdsToSelect);
+      }
+    });
+
+    panel.add(propagateBtn);
     return panel;
   }
 

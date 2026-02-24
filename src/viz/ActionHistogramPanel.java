@@ -179,6 +179,23 @@ public class ActionHistogramPanel extends TimelinePanel {
     return maxCount;
   }
 
+  /**
+   * Identifies process IDs for all tasks in this histogram that are currently selected.
+   */
+  public Set<String> getProcessIdsForSelectedTasks() {
+    Set<String> ids = new HashSet<>();
+    if (selectionManager == null || !selectionManager.hasTaskSelection()) return ids;
+
+    for (List<TaskContext> contexts : tasksByDays.values()) {
+      for (TaskContext tc : contexts) {
+        if (selectionManager.isTaskSelected(tc.task)) {
+          ids.add(tc.processId);
+        }
+      }
+    }
+    return ids;
+  }
+
   private LocalDate getDateAtX(int x) {
     // Ensure x is within bounds
     x = Math.max(0, Math.min(x, getWidth()));
