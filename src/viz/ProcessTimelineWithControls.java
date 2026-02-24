@@ -28,7 +28,7 @@ public class ProcessTimelineWithControls extends JPanel {
     group.add(processesButton);
     group.add(actorsButton);
     // Set default
-    if (processMainPanel.getMode()==ProcessTimelinePanel.PROCESS_MODE)
+    if (processMainPanel.getGroupingMode()==ProcessTimelinePanel.PROCESS_MODE)
       processesButton.setSelected(true);
     else
       actorsButton.setSelected(true);
@@ -43,14 +43,14 @@ public class ProcessTimelineWithControls extends JPanel {
       @Override
       public void actionPerformed(ActionEvent e) {
         if (processesButton.isSelected())
-          processMainPanel.setMode(ProcessTimelinePanel.PROCESS_MODE);
+          processMainPanel.setGroupingMode(ProcessTimelinePanel.PROCESS_MODE);
       }
     });
     actorsButton.addActionListener(new ActionListener() {
       @Override
       public void actionPerformed(ActionEvent e) {
         if (actorsButton.isSelected())
-          processMainPanel.setMode(ProcessTimelinePanel.ACTOR_MODE);
+          processMainPanel.setGroupingMode(ProcessTimelinePanel.ACTOR_MODE);
       }
     });
 
@@ -87,5 +87,25 @@ public class ProcessTimelineWithControls extends JPanel {
           processMainPanel.setSymbolMode(ProcessTimelinePanel.SYMBOL_CHAR);
       }
     });
-  }
+
+// --- Filter Mode Controls ---
+    JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    JRadioButton allButton = new JRadioButton("all");
+    JRadioButton selectedButton = new JRadioButton("selected only");
+    ButtonGroup filterGroup = new ButtonGroup();
+    filterGroup.add(allButton);
+    filterGroup.add(selectedButton);
+
+    if (processMainPanel.getFilterMode() == ProcessTimelinePanel.SHOW_ALL)
+      allButton.setSelected(true);
+    else
+      selectedButton.setSelected(true);
+
+    filterPanel.add(new JLabel("View:"));
+    filterPanel.add(allButton);
+    filterPanel.add(selectedButton);
+    controlPanel.add(filterPanel); // Adding to the central control panel
+
+    allButton.addActionListener(e -> processMainPanel.setFilterMode(ProcessTimelinePanel.SHOW_ALL));
+    selectedButton.addActionListener(e -> processMainPanel.setFilterMode(ProcessTimelinePanel.SHOW_SELECTED));  }
 }

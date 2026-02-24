@@ -11,6 +11,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
   public static int markRadius=4, markDiameter=markRadius*2, actorLineSpacing=8;
   public static int PROCESS_MODE=1, ACTOR_MODE=2;
   public static int SYMBOL_DOT=0, SYMBOL_CHAR=1;
+  public static int SHOW_ALL=0, SHOW_SELECTED=1;
   public static Color taskSymbolColor=new Color(60,60,255,160),
       delayedTaskColor=Color.red.darker();
   public static Color threadHighlightColor=new Color(0,240,255,180),
@@ -18,8 +19,9 @@ public class ProcessTimelinePanel extends TimelinePanel{
   
   public GlobalProcess gProc=null;
   private SelectionManager selectionManager=null;
-  public int mode=PROCESS_MODE;
+  public int groupingMode =PROCESS_MODE;
   public int symbolMode=SYMBOL_CHAR;
+  public int filterMode=SHOW_ALL;
   
   protected Map<Rectangle, ProcessInstance> processAreas = null;
   protected Map<String,Map<Rectangle,Actor>> processActorAreas=null;
@@ -64,13 +66,13 @@ public class ProcessTimelinePanel extends TimelinePanel{
     return selectionManager;
   }
 
-  public void setMode(int mode) {
-    this.mode = mode;
+  public void setGroupingMode(int groupingMode) {
+    this.groupingMode = groupingMode;
     repaint();
   }
 
-  public int getMode() {
-    return mode;
+  public int getGroupingMode() {
+    return groupingMode;
   }
 
   public int getSymbolMode() {
@@ -82,12 +84,21 @@ public class ProcessTimelinePanel extends TimelinePanel{
     repaint();
   }
 
+  public int getFilterMode() {
+    return filterMode;
+  }
+
+  public void setFilterMode(int filterMode) {
+    this.filterMode = filterMode;
+    repaint();
+  }
+
   protected void paintComponent(Graphics g) {
     super.paintComponent(g); // Draw background phases
-    if (mode==PROCESS_MODE)
+    if (groupingMode ==PROCESS_MODE)
       paintByProcesses(g);
     else
-      if (mode==ACTOR_MODE)
+      if (groupingMode ==ACTOR_MODE)
         paintByActors(g);
   }
 
@@ -114,6 +125,9 @@ public class ProcessTimelinePanel extends TimelinePanel{
     int y0 = yTop + 2 * actorLineSpacing;
 
     for (ProcessInstance p : gProc.processes) {
+      if (filterMode==SHOW_SELECTED && selectionManager!=null && !selectionManager.isProcessSelested(p.id))
+        continue;
+
       TimeInterval pLife = p.getProcessLifetime();
       int xStartProcess = getXForTime(pLife.start, width);
       int xEndProcess = getXForTime(pLife.end, width);
@@ -122,10 +136,12 @@ public class ProcessTimelinePanel extends TimelinePanel{
       int vLineHeight = (sortedThreads.size() - 1) * actorLineSpacing;
       int maxY = y0+vLineHeight;
 
-      boolean selected=selectionManager!=null && selectionManager.isProcessSelested(p.id);
-      if (selected) {
-        g2d.setColor(processHighlightColor);
-        g2d.fillRect(xStartProcess,y0,xEndProcess-xStartProcess,vLineHeight+actorLineSpacing);
+      if (filterMode==SHOW_ALL) {
+        boolean selected = selectionManager != null && selectionManager.isProcessSelested(p.id);
+        if (selected) {
+          g2d.setColor(processHighlightColor);
+          g2d.fillRect(xStartProcess, y0, xEndProcess - xStartProcess, vLineHeight + actorLineSpacing);
+        }
       }
 
       if (p.hasPhaseCompletenessDates()) {
@@ -249,6 +265,8 @@ public class ProcessTimelinePanel extends TimelinePanel{
       // 1. Group all threads for this actor across all processes
       List<ThreadContext> actorThreadContexts = new ArrayList<>();
       for (ProcessInstance p : gProc.processes) {
+        if (filterMode==SHOW_SELECTED && selectionManager!=null && !selectionManager.isProcessSelested(p.id))
+          continue;
         if (p.threads.containsKey(actor.id)) {
           actorThreadContexts.add(new ThreadContext(p, p.threads.get(actor.id)));
         }
@@ -291,12 +309,14 @@ public class ProcessTimelinePanel extends TimelinePanel{
         int xEndThread = getXForTime(tLife.end, width);
 
         // Process selection
-        boolean isProcessSelected = selectionManager!=null && selectionManager.isProcessSelested(tc.process.id);
-        if (isProcessSelected) {
-          int xEndProcess=getXForTime(tc.process.getProcessLifetime().end,width);
-          g.setColor(processHighlightColor);
-          int hWidth=actorLineSpacing-2;
-          g.fillRect(minActorX,y-hWidth/2,xEndProcess-minActorX, hWidth);
+        if (filterMode==SHOW_ALL) {
+          boolean isProcessSelected = selectionManager != null && selectionManager.isProcessSelested(tc.process.id);
+          if (isProcessSelected) {
+            int xEndProcess = getXForTime(tc.process.getProcessLifetime().end, width);
+            g.setColor(processHighlightColor);
+            int hWidth = actorLineSpacing - 2;
+            g.fillRect(minActorX, y - hWidth / 2, xEndProcess - minActorX, hWidth);
+          }
         }
 
         // Thread selection
@@ -400,7 +420,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
   public String getToolTipText(Point pt) {
     if (pt==null)
       return null;
-    if (mode==PROCESS_MODE) {
+    if (groupingMode ==PROCESS_MODE) {
       if (processAreas == null)
         return super.getToolTipText(pt);
       for (Map.Entry<Rectangle, ProcessInstance> entry : processAreas.entrySet()) {
@@ -424,7 +444,7 @@ public class ProcessTimelinePanel extends TimelinePanel{
         }
       }
     }
-    if (mode==ACTOR_MODE) {
+    if (groupingMode ==ACTOR_MODE) {
       if (actorAreas!=null)
         if (actorAreas != null)
           for (Map.Entry<Rectangle, Actor> actorEntry : actorAreas.entrySet())
